@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-config
+data:
+  dynamic.yml: |
+    tls:
+      certificates:
+      - certFile: /certs/tls.crt
+        keyFile: /certs/tls.key
+      stores:
+        default:
+          defaultCertificate:
+            certFile: /certs/tls.crt
+            keyFile: /certs/tls.key

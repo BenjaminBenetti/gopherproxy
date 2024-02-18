@@ -1,0 +1,30 @@
+{{- range $service := .Values.services }}
+---
+kind: Deployment 
+apiVersion: apps/v1
+metadata:
+  name: {{ $service.name }}
+  labels:
+    app: {{ $service.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $service.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $service.name }}
+    spec:
+      containers:
+      - name: {{ $service.name }}
+        image: {{ $service.image }}
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: {{ $service.resources.limits.cpu }}
+            memory: {{ $service.resources.limits.memory }}
+          requests:
+            cpu: {{ $service.resources.requests.cpu }}
+            memory: {{ $service.resources.requests.memory }}
+
+{{ end }}

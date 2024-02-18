@@ -1,0 +1,18 @@
+service:
+  type: NodePort
+ports:
+  web:
+    nodePort: 30000
+  websecure:
+    nodePort: 30001
+additionalArguments:
+  - "--providers.file.filename=/config/dynamic.yml"
+  - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+  - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+volumes:
+  - name: cluster-cert
+    mountPath: /certs
+    type: secret
+  - name: "traefik-config"
+    mountPath: "/config"
+    type: configMap

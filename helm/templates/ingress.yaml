@@ -1,0 +1,22 @@
+{{- range $service := .Values.services }}
+{{ if eq $service.net.external true }}
+---
+kind: Ingress 
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ $service.name }}
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: {{ $service.net.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ $service.name }}
+            port:
+              number: 80
+{{ end }}
+{{- end }}

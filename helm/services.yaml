@@ -1,0 +1,16 @@
+services:
+  # TODO add your services here
+  # EXAMPLE. delete this once you have your own services
+  - name: example
+    image: httpd
+    net:
+      external: true
+      host: example.notset.dev
+      internalPort: 80
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
