@@ -1,16 +1,14 @@
 services:
-  # TODO add your services here
-  # EXAMPLE. delete this once you have your own services
-  - name: example
-    image: httpd
+  - name: gopherproxy
+    image: gopherproxyserver
     net:
       external: true
-      host: example.notset.dev
-      internalPort: 80
+      host: gopherproxy.localhost
+      internalPort: 8080
     resources:
       limits:
-        cpu: 100m
-        memory: 128Mi
+        cpu: "1"
+        memory: 256Mi
       requests:
         cpu: 10m
         memory: 64Mi

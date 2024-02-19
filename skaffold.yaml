@@ -3,14 +3,14 @@ kind: Config
 
 build:
   artifacts:
-    []
-    # TODO add your docker files here.
-    # For more info checkout the skaffold docs https://skaffold.dev/docs/references/yaml/?version=v3
-    # Example
-    # - image: example
-    #   context: ./docker/build/context
-    #   docker:
-    #     dockerfile: Dockerfile
+    - image: gopherproxyserver
+      context: .
+      docker:
+        dockerfile: ./cmd/gopherproxyserver/Dockerfile.dev
+      sync:
+        infer:
+          - "cmd/**/*"
+          - "internal/**/*"
 
 deploy:
   helm:
