@@ -29,3 +29,10 @@ Launch the app & development cluster with the following command:
 ./dev.sh
 ```
 
+Your proxy should now be running at `proxy.gopherproxy.dev`. Add a host entry pointing at the docker 
+default gateway `172.17.0.1`. You can now connect to the proxy server with the client.
+
+```bash
+go run ./cmd/gopherproxyclient/ --proxy 'wss://proxy.gopherproxy.dev/api/ws/connect' --password abc123
+```
+

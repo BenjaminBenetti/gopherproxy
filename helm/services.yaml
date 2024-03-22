@@ -3,7 +3,7 @@ services:
     image: gopherproxyserver
     net:
       external: true
-      host: gopherproxy.dev
+      host: proxy.gopherproxy.dev
       internalPort: 8080
     resources:
       limits:
