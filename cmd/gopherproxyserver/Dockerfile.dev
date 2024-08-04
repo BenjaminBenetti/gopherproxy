@@ -10,4 +10,3 @@ COPY . .
 RUN go build -o ./bin/gopherproxyserver ./cmd/gopherproxyserver
 
 ENTRYPOINT [ "CompileDaemon", "-directory=/src/", "-command=./bin/gopherproxyserver", "-build=go build -o ./bin/gopherproxyserver ./cmd/gopherproxyserver" ]
-

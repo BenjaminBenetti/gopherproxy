@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/CanadianCommander/gopherproxy/internal/api"
+	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyserver/api"
 	"github.com/gin-gonic/gin"
 )
 
