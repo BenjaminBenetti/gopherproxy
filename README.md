@@ -15,3 +15,9 @@ depending on the configuration of each client (what ports to forward)
 ![GopherProxy](./doc/gohperproxy.drawio.png)
 
 
+## Development 
+
+Starting the development environment is simple, assuming `Docker` is already installed simply run:
+```bash
+./dev.sh
+```
