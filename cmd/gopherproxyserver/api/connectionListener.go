@@ -5,7 +5,8 @@ import (
 
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyserver/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
-	"github.com/CanadianCommander/gopherproxy/internal/proxyerrors"
+	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
+	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/websocket"
 	"github.com/gin-gonic/gin"
 )
@@ -54,8 +55,9 @@ func ConnectionListen(context *gin.Context) {
 		} else {
 			err = proxy.Manager.AddEndpoint(client)
 			switch err.(type) {
-			case *proxyerrors.AuthenticationError:
+			case *proxylib.AuthenticationError:
 				logging.Get().Warnw("Failed to add endpoint to manager. Authentication Error", "error", err.Error())
+				client.Write(*proxcom.NewCriticalErrorPacket(err))
 			case nil: // no error
 			default:
 				logging.Get().Errorw("Failed to add endpoint to manager. Unexpected Error ", "error", err.Error())

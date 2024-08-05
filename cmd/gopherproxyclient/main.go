@@ -4,9 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
+	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 	"github.com/CanadianCommander/gopherproxy/internal/websocket"
 )
@@ -26,8 +25,8 @@ func main() {
 		panic(err)
 	}
 
-	go printLoop(client)
-	createSigtermHandler(client)
+	clientManager := proxy.NewClientManager(client)
+	clientManager.Start()
 
 	for {
 		fmt.Print("> ")
@@ -50,27 +49,5 @@ func main() {
 		}
 
 		client.Write(packet)
-	}
-}
-
-func createSigtermHandler(client *websocket.ProxyClient) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		client.Close()
-		os.Exit(0)
-	}()
-}
-
-func printLoop(client *websocket.ProxyClient) {
-	for {
-		packet, ok := client.Read()
-		if !ok {
-			fmt.Println("Connection closed")
-			return
-		} else {
-			fmt.Println(string(packet.Data))
-		}
 	}
 }

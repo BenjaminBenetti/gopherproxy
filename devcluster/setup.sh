@@ -5,6 +5,8 @@ pushd $(dirname $0) >> /dev/null
 PROJECT_NAME=$(cat ../project.json | jq -r '.name')
 PROJECT_DNS=${PROJECT_NAME}.dev
 
+./teardown.sh
+
 # create minikube cluster
 minikube start --extra-config=apiserver.service-node-port-range=1-65535
 # update /etc/hosts file

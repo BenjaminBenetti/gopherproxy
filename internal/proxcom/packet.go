@@ -10,6 +10,8 @@ type PacketType int
 // This enum indicates to the receiver what the packet is for
 const (
 	Data PacketType = iota
+	Error
+	CriticalError
 	ConfigureEndpoint
 	SocketConnect
 	SocketDisconnect
@@ -27,7 +29,7 @@ type Packet struct {
 // ============================================
 
 // FromBytes creates a new packet from a byte array
-func PacketFromBytes(data []byte) (*Packet, error) {
+func NewPacketFromBytes(data []byte) (*Packet, error) {
 
 	var packet = Packet{
 		Type:   Data,

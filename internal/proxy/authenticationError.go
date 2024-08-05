@@ -1,4 +1,4 @@
-package proxyerrors
+package proxy
 
 type AuthenticationError struct {
 	Message string
@@ -19,5 +19,5 @@ func NewAuthenticationError(message string) *AuthenticationError {
 // ===========================================
 
 func (e *AuthenticationError) Error() string {
-	return "Authentication error"
+	return e.Message
 }

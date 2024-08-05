@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
-	"github.com/CanadianCommander/gopherproxy/internal/proxyerrors"
+	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/websocket"
 	"github.com/google/uuid"
 )
@@ -29,7 +29,7 @@ func (manager *manager) AddEndpoint(endpoint *websocket.ProxyClient) error {
 	defer manager.endpointMutex.Unlock()
 
 	if !manager.checkChannelPasswords(endpoint.Settings.Channel, endpoint.Settings.Password) {
-		return proxyerrors.NewAuthenticationError("Invalid password for channel: " + endpoint.Settings.Channel)
+		return proxylib.NewAuthenticationError("Invalid password for channel: " + endpoint.Settings.Channel)
 	}
 
 	logging.Get().Infow("Adding new endpoint to manager", "channel", endpoint.Settings.Channel, "name", endpoint.Settings.Name, "id", endpoint.Id)
