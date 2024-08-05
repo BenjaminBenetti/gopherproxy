@@ -3,6 +3,7 @@ package proxcom
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 )
 
 type PacketType int
@@ -12,7 +13,7 @@ const (
 	Data PacketType = iota
 	Error
 	CriticalError
-	ConfigureEndpoint
+	ChannelState
 	SocketConnect
 	SocketDisconnect
 )
@@ -42,6 +43,21 @@ func NewPacketFromBytes(data []byte) (*Packet, error) {
 	return &packet, err
 }
 
+// NewPacketFromStruct creates a new packet from a struct with the given packet type
+func NewPacketFromStruct(obj any, typ PacketType) (*Packet, error) {
+	bytes, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Packet{
+		Type:   typ,
+		Target: Endpoint{},
+		Source: Endpoint{},
+		Data:   bytes,
+	}, err
+}
+
 // ============================================
 // Public Methods
 // ============================================
@@ -52,4 +68,9 @@ func (packet *Packet) ToBytes() ([]byte, error) {
 
 	var err = gob.NewEncoder(&buffer).Encode(packet)
 	return buffer.Bytes(), err
+}
+
+// DecodeJsonData inside this packet.
+func (packet *Packet) DecodeJsonData(out any) error {
+	return json.Unmarshal(packet.Data, out)
 }

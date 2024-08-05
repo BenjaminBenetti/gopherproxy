@@ -7,7 +7,6 @@ import (
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
-	"github.com/CanadianCommander/gopherproxy/internal/websocket"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,24 +27,24 @@ func ConnectionListen(context *gin.Context) {
 			"isWebSocket", context.IsWebsocket(),
 		)
 
-		channelName := context.Query(websocket.ChannelParam)
+		channelName := context.Query(proxylib.ChannelParam)
 		if channelName == "" {
 			logging.Get().Warn("Incoming connection did not specify a channel")
 			context.Status(http.StatusBadRequest)
 			return
 		}
 
-		clientName := context.Query(websocket.ClientName)
+		clientName := context.Query(proxylib.ClientName)
 		if clientName == "" {
 			logging.Get().Warn("Incoming connection did not specify a client name")
 			context.Status(http.StatusBadRequest)
 			return
 		}
 
-		client, err := websocket.UpgradeConnection(context, websocket.ProxyClientSettings{
+		client, err := proxylib.UpgradeConnection(context, proxylib.ProxyClientSettings{
 			Name:     clientName,
 			Channel:  channelName,
-			Password: context.GetHeader(websocket.AuthorizationHeader),
+			Password: context.GetHeader(proxylib.AuthorizationHeader),
 		})
 
 		if err != nil {

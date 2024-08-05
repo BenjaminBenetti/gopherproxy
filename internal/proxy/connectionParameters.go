@@ -1,4 +1,4 @@
-package websocket
+package proxy
 
 // =========================================
 // Websocket connection query parameters

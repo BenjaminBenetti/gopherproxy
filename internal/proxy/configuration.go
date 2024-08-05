@@ -1,4 +1,4 @@
-package websocket
+package proxy
 
 // ============================================
 // Websocket configuration constants

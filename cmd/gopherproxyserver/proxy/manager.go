@@ -6,17 +6,16 @@ import (
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
-	"github.com/CanadianCommander/gopherproxy/internal/websocket"
 	"github.com/google/uuid"
 )
 
 type manager struct {
-	endpoints     map[string][]*websocket.ProxyClient
+	endpoints     map[string][]*proxylib.ProxyClient
 	endpointMutex sync.Mutex
 }
 
 var Manager = manager{
-	endpoints: make(map[string][]*websocket.ProxyClient),
+	endpoints: make(map[string][]*proxylib.ProxyClient),
 }
 
 // ============================================
@@ -24,7 +23,7 @@ var Manager = manager{
 // ============================================
 
 // AddEndpoint adds a new endpoint to the proxy manager
-func (manager *manager) AddEndpoint(endpoint *websocket.ProxyClient) error {
+func (manager *manager) AddEndpoint(endpoint *proxylib.ProxyClient) error {
 	manager.endpointMutex.Lock()
 	defer manager.endpointMutex.Unlock()
 
@@ -35,10 +34,11 @@ func (manager *manager) AddEndpoint(endpoint *websocket.ProxyClient) error {
 	logging.Get().Infow("Adding new endpoint to manager", "channel", endpoint.Settings.Channel, "name", endpoint.Settings.Name, "id", endpoint.Id)
 
 	if manager.endpoints[endpoint.Settings.Channel] == nil {
-		manager.endpoints[endpoint.Settings.Channel] = make([]*websocket.ProxyClient, 0)
+		manager.endpoints[endpoint.Settings.Channel] = make([]*proxylib.ProxyClient, 0)
 	}
 	manager.endpoints[endpoint.Settings.Channel] = append(manager.endpoints[endpoint.Settings.Channel], endpoint)
 
+	sendStatusUpdateToChannel(manager.endpoints[endpoint.Settings.Channel])
 	go watchForClientClose(endpoint)
 	return nil
 }
@@ -60,10 +60,12 @@ func (manager *manager) RemoveEndpoint(channel string, id uuid.UUID) error {
 			manager.endpoints[channel] = append(manager.endpoints[channel][:i], manager.endpoints[channel][i+1:]...)
 		}
 	}
+
+	sendStatusUpdateToChannel(manager.endpoints[channel])
 	return nil
 }
 
-func (manager *manager) GetEndpointsOnChannel(channel string) []*websocket.ProxyClient {
+func (manager *manager) GetEndpointsOnChannel(channel string) []*proxylib.ProxyClient {
 	manager.endpointMutex.Lock()
 	defer manager.endpointMutex.Unlock()
 
@@ -74,7 +76,7 @@ func (manager *manager) GetEndpointsOnChannel(channel string) []*websocket.Proxy
 // Go Routines
 // ============================================
 
-func watchForClientClose(proxyClient *websocket.ProxyClient) {
+func watchForClientClose(proxyClient *proxylib.ProxyClient) {
 	<-proxyClient.CloseChannel
 	Manager.RemoveEndpoint(proxyClient.Settings.Channel, proxyClient.Id)
 }

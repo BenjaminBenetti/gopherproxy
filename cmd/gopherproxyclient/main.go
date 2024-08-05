@@ -7,14 +7,14 @@ import (
 
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
-	"github.com/CanadianCommander/gopherproxy/internal/websocket"
+	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
 )
 
 func main() {
 	cliArgs := ParseArgs()
 
 	// Create a new GopherProxyClient
-	client, err := websocket.NewOutgoingSocket(cliArgs.ProxyUrl, websocket.ProxyClientSettings{
+	client, err := proxylib.NewOutgoingSocket(cliArgs.ProxyUrl, proxylib.ProxyClientSettings{
 		Channel:  cliArgs.Channel,
 		Password: cliArgs.Password,
 		Name:     cliArgs.ClientName,
