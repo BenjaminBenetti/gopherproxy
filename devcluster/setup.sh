@@ -5,21 +5,19 @@ pushd $(dirname $0) >> /dev/null
 PROJECT_NAME=$(cat ../project.json | jq -r '.name')
 PROJECT_DNS=${PROJECT_NAME}.dev
 
-EXISTS=$(kind get clusters | grep ${PROJECT_NAME}-cluster)
-if [ ! -z "$EXISTS" ]; then
-    echo "Cluster already exists. Skipping cluster creation."
-    exit 0
-fi
-
-# create kind cluster
-kind create cluster -n ${PROJECT_NAME}-cluster --config ./manifest/kind-config.yaml 
+# create minikube cluster
+minikube start --extra-config=apiserver.service-node-port-range=1-65535
+# update /etc/hosts file
+echo "Exposing proxy.gopherproxy.dev on https://$(minikube ip):443"
+sudo sed -i "/proxy.gopherproxy.dev/d" /etc/hosts
+sudo bash -c "echo \"$(minikube ip) proxy.gopherproxy.dev\" >> /etc/hosts"
 
 # install helm repos 
 helm repo add traefik https://traefik.github.io/charts
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm repo update 
 
-# setup dev cert 
+# setup dev cert
 mkcert -install
 pushd /tmp/ >> /dev/null
 mkcert *.${PROJECT_DNS}
@@ -36,6 +34,6 @@ helm install traefik traefik/traefik --create-namespace --namespace traefik-ingr
 # install metrics server
 helm upgrade --install metrics-server metrics-server/metrics-server --namespace kube-system --set args[0]="--kubelet-insecure-tls=true"
 
-echo You're Ready to Dev!
+echo Cluster setup complete.
 
 popd >> /dev/null

@@ -1,0 +1,17 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
+{
+	"name": "Gopher Proxy",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers-contrib/features/kubectx-kubens:1": {},
+		"ghcr.io/rio/features/skaffold:2": {},
+		"ghcr.io/devcontainers-contrib/features/mkcert:1": {}
+	},
+	"postStartCommand": "./devcluster/setup.sh"
+}

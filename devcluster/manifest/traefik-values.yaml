@@ -2,9 +2,9 @@ service:
   type: NodePort
 ports:
   web:
-    nodePort: 30000
+    nodePort: 80
   websecure:
-    nodePort: 30001
+    nodePort: 443
 additionalArguments:
   - "--providers.file.filename=/config/dynamic.yml"
   - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
