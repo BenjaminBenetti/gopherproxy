@@ -5,15 +5,24 @@ import (
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type ProxyClient struct {
+	Id            uuid.UUID
 	WsCon         *websocket.Conn
 	InputChannel  chan proxcom.Packet
 	OutputChannel chan proxcom.Packet
-	closeChannel  chan bool
+	CloseChannel  chan bool
 	Closed        bool
+	Settings      ProxyClientSettings
+}
+
+type ProxyClientSettings struct {
+	Name     string
+	Channel  string
+	Password string
 }
 
 // ============================================
@@ -22,13 +31,15 @@ type ProxyClient struct {
 
 // newProxyClient creates a new websocket proxy client
 // @param wsCon: the websocket connection
-func newProxyClient(wsCon *websocket.Conn) *ProxyClient {
+func newProxyClient(wsCon *websocket.Conn, settings ProxyClientSettings) *ProxyClient {
 	var client = ProxyClient{
+		Id:            uuid.New(),
 		WsCon:         wsCon,
 		InputChannel:  make(chan proxcom.Packet, proxyChannelBufferSize),
 		OutputChannel: make(chan proxcom.Packet, proxyChannelBufferSize),
-		closeChannel:  make(chan bool, 1),
+		CloseChannel:  make(chan bool, 1),
 		Closed:        false,
+		Settings:      settings,
 	}
 
 	wsCon.SetCloseHandler(func(code int, text string) error {
@@ -56,7 +67,7 @@ func (client *ProxyClient) Read() (proxcom.Packet, bool) {
 	select {
 	case packet, ok := <-client.OutputChannel:
 		return packet, ok
-	case <-client.closeChannel:
+	case <-client.CloseChannel:
 		return proxcom.Packet{}, false
 	}
 }
@@ -65,8 +76,8 @@ func (client *ProxyClient) Close() error {
 	client.Closed = true
 	close(client.InputChannel)
 	close(client.OutputChannel)
-	client.closeChannel <- true
-	close(client.closeChannel)
+	client.CloseChannel <- true
+	close(client.CloseChannel)
 
 	client.WsCon.WriteControl(websocket.CloseMessage, nil, time.Now().Add(1000*time.Millisecond))
 	return client.WsCon.Close()
@@ -127,7 +138,7 @@ func (client *ProxyClient) writePump() {
 						"remoteAddr", client.WsCon.RemoteAddr())
 				}
 			}
-		case <-client.closeChannel:
+		case <-client.CloseChannel:
 			logging.Get().Infow("Proxy write pump closed", "RemoteAddr", client.WsCon.RemoteAddr())
 			return
 		}

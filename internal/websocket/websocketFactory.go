@@ -3,13 +3,14 @@ package websocket
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-func UpgradeConnection(context *gin.Context) (*ProxyClient, error) {
+func UpgradeConnection(context *gin.Context, settings ProxyClientSettings) (*ProxyClient, error) {
 
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  wsReadBufferSize,
@@ -25,19 +26,25 @@ func UpgradeConnection(context *gin.Context) (*ProxyClient, error) {
 	logging.Get().Infow("Connection upgraded to websocket",
 		"remoteAddr", context.Request.RemoteAddr)
 
-	return newProxyClient(wsCon), nil
+	return newProxyClient(wsCon, settings), nil
 }
 
 // NewOutgoingSocket creates a new outgoing websocket connection to the given url
-func NewOutgoingSocket(url string, auth string) (*ProxyClient, error) {
+func NewOutgoingSocket(url url.URL, settings ProxyClientSettings) (*ProxyClient, error) {
 	dialer := websocket.Dialer{
 		ReadBufferSize:  wsReadBufferSize,
 		WriteBufferSize: wsWriteBufferSize,
 	}
 
-	wsCon, _, err := dialer.Dial(url, http.Header{"Authorization": []string{fmt.Sprintf("Basic %s", auth)}})
+	// set query params
+	query := url.Query()
+	query.Add(ChannelParam, settings.Channel)
+	query.Add(ClientName, settings.Name)
+	url.RawQuery = query.Encode()
+
+	wsCon, _, err := dialer.Dial(url.String(), http.Header{AuthorizationHeader: []string{fmt.Sprintf("Basic %s", settings.Password)}})
 	if err != nil {
 		return nil, err
 	}
-	return newProxyClient(wsCon), nil
+	return newProxyClient(wsCon, settings), nil
 }

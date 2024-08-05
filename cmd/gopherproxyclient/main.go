@@ -15,7 +15,12 @@ func main() {
 	cliArgs := ParseArgs()
 
 	// Create a new GopherProxyClient
-	client, err := websocket.NewOutgoingSocket(cliArgs.ProxyUrl, cliArgs.Password)
+	client, err := websocket.NewOutgoingSocket(cliArgs.ProxyUrl, websocket.ProxyClientSettings{
+		Channel:  cliArgs.Channel,
+		Password: cliArgs.Password,
+		Name:     cliArgs.ClientName,
+	})
+
 	if err != nil {
 		fmt.Print("Failed to connect to GopherProxy server")
 		panic(err)
