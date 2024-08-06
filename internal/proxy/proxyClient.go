@@ -133,7 +133,7 @@ func (client *ProxyClient) writePump() {
 			} else {
 				err = client.WsCon.WriteMessage(websocket.BinaryMessage, bytes)
 				if err != nil {
-					logging.Get().Error("Failed to write to remote websocket",
+					logging.Get().Warn("Failed to write to remote websocket",
 						"error", err,
 						"remoteAddr", client.WsCon.RemoteAddr())
 				}

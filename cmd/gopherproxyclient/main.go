@@ -6,12 +6,19 @@ import (
 	"os"
 
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
+	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
+	"go.uber.org/zap"
 )
 
 func main() {
 	cliArgs := ParseArgs()
+	if cliArgs.Debug {
+		logging.CreateLogger(zap.DebugLevel)
+	} else {
+		logging.CreateLogger(zap.ErrorLevel)
+	}
 
 	// Create a new GopherProxyClient
 	client, err := proxylib.NewOutgoingSocket(cliArgs.ProxyUrl, proxylib.ProxyClientSettings{
@@ -27,6 +34,32 @@ func main() {
 
 	clientManager := proxy.NewClientManager(client)
 	clientManager.Start()
+	clientManager.WaitForInitialization()
+
+	switch cliArgs.Command {
+	case "list":
+		listChannelMembers(cliArgs.Channel, clientManager)
+	case "echo":
+		printLoop(client)
+	}
+
+	if !client.Closed {
+		client.Close()
+	}
+}
+
+func listChannelMembers(channel string, clientManager *proxy.ClientManager) {
+	fmt.Printf("================ Clients On Channel [%s] ================\n", channel)
+	for _, member := range clientManager.StateManager.ChannelMembers {
+		if member.Id == clientManager.Client.Id {
+			fmt.Printf("  %s (You)\n", member.Name)
+		} else {
+			fmt.Printf("  %s \n", member.Name)
+		}
+	}
+}
+
+func printLoop(client *proxylib.ProxyClient) {
 
 	for {
 		fmt.Print("> ")

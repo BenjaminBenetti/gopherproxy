@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/url"
 	"os"
 )
@@ -11,6 +12,8 @@ type CliArgs struct {
 	Password   string
 	Channel    string
 	ClientName string
+	Debug      bool
+	Command    string
 }
 
 // ============================================
@@ -19,12 +22,29 @@ type CliArgs struct {
 
 // ParseArgs parses the command line arguments
 func ParseArgs() CliArgs {
+	flag.Usage = func() {
+		_, _ = os.Stderr.WriteString("Usage: gopherproxyclient [options] <command>\n")
+		fmt.Println("Commands:")
+		fmt.Println("  list    List all clients connected to the channel")
+		fmt.Println("  echo    Simple testing mode where you can interactivly send messages to the channel")
+		fmt.Println("Options:")
+		flag.PrintDefaults()
+	}
 
 	proxyUrlStr := flag.String("proxy", "wss://localhost", "The URL of the GopherProxy instance")
 	password := flag.String("password", "", "The password to use for the proxy connection")
 	channel := flag.String("channel", "", "The channel to connect to. Use the same channel name on both ends of the connection.")
 	clientName := flag.String("name", "", "The name of the client connecting to the proxy. Use this to organize clients. Defaults to the hostname of the machine.")
+	debug := flag.Bool("debug", false, "Enable debug logging")
+
 	flag.Parse()
+	if flag.NArg() == 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	// read first positional argument as command
+	command := flag.Arg(0)
 
 	proxyUrl, err := url.Parse(*proxyUrlStr)
 	if err != nil {
@@ -45,6 +65,8 @@ func ParseArgs() CliArgs {
 		Password:   *password,
 		Channel:    *channel,
 		ClientName: *clientName,
+		Debug:      *debug,
+		Command:    command,
 	}
 
 	validateArgs(cliArgs)

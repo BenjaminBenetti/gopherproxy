@@ -12,8 +12,9 @@ import (
 )
 
 type ClientManager struct {
-	client       *proxy.ProxyClient
-	stateManager *stateManager
+	Client       *proxy.ProxyClient
+	StateManager *stateManager
+	Initialized  bool
 }
 
 // ============================================
@@ -23,8 +24,9 @@ type ClientManager struct {
 // NewClientManager creates a new client manager
 func NewClientManager(client *proxy.ProxyClient) *ClientManager {
 	return &ClientManager{
-		client:       client,
-		stateManager: NewStateManager(),
+		Client:       client,
+		StateManager: NewStateManager(),
+		Initialized:  false,
 	}
 }
 
@@ -34,8 +36,17 @@ func NewClientManager(client *proxy.ProxyClient) *ClientManager {
 
 // Start starts the client manager
 func (manager *ClientManager) Start() {
-	go messageProcessingLoop(manager, manager.client)
-	createSigtermHandler(manager.client)
+	go messageProcessingLoop(manager, manager.Client)
+	createSigtermHandler(manager.Client)
+}
+
+func (manager *ClientManager) WaitForInitialization() {
+	if !manager.Initialized {
+		<-manager.StateManager.InitializationChan
+
+		logging.Get().Info("Client fully initialized")
+		manager.Initialized = true
+	}
 }
 
 // ============================================
@@ -98,7 +109,7 @@ func messageProcessingLoop(manager *ClientManager, client *proxy.ProxyClient) {
 			case proxcom.CriticalError:
 				manager.handleCriticalError(client, packet)
 			case proxcom.ChannelState:
-				manager.stateManager.handleChannelState(client, packet)
+				manager.StateManager.handleChannelState(client, packet)
 			case proxcom.SocketConnect:
 				manager.handleSocketConnect(client, packet)
 			case proxcom.SocketDisconnect:

@@ -7,7 +7,10 @@ import (
 )
 
 type stateManager struct {
-	channelMembers []*proxcom.ChannelMember
+	ChannelMembers []*proxcom.ChannelMember
+	// channel will receive true when the client is fully setup and ready to go
+	InitializationChan chan bool
+	Initialized        bool
 }
 
 // ============================================
@@ -17,7 +20,9 @@ type stateManager struct {
 // NewStateManager creates a new state manager
 func NewStateManager() *stateManager {
 	return &stateManager{
-		channelMembers: make([]*proxcom.ChannelMember, 0),
+		ChannelMembers:     make([]*proxcom.ChannelMember, 0),
+		InitializationChan: make(chan bool, 1),
+		Initialized:        false,
 	}
 }
 
@@ -33,6 +38,14 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 		logging.Get().Errorw("Channel state update failed. Error decoding state packet", "error", err)
 	}
 
-	manager.channelMembers = channelState.CurrentMembers
-	logging.Get().Infow("Channel state updated", "channel", client.Settings.Channel, "members", len(manager.channelMembers))
+	client.Id = channelState.YourId
+	manager.ChannelMembers = channelState.CurrentMembers
+
+	logging.Get().Infow("Channel state updated", "channel", client.Settings.Channel, "members", len(manager.ChannelMembers))
+
+	if !manager.Initialized {
+		manager.Initialized = true
+		manager.InitializationChan <- true
+		close(manager.InitializationChan)
+	}
 }

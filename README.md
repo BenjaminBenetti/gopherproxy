@@ -24,5 +24,5 @@ Simply open the project devcontainer and run the following command:
 Your proxy should now be running at `proxy.gopherproxy.dev`. You can now connect to the proxy server with the client.
 
 ```bash
-go run ./cmd/gopherproxyclient/ --proxy 'wss://proxy.gopherproxy.dev/api/ws/connect' --password abc123 --channel test --name bobross
+go run ./cmd/gopherproxyclient/ --proxy 'wss://proxy.gopherproxy.dev/api/ws/connect' --password abc123 --channel test --name bobross echo
 ```

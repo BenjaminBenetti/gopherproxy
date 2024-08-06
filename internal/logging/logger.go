@@ -1,9 +1,19 @@
 package logging
 
-import "go.uber.org/zap"
+import (
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+var logger *zap.SugaredLogger
+
+// Init initializes the logger
+func CreateLogger(logLevel zapcore.Level) {
+	zlog, _ := zap.NewProduction(zap.IncreaseLevel(logLevel))
+	logger = zlog.Sugar()
+}
 
 // Get returns a new zap logger
 func Get() *zap.SugaredLogger {
-	logger, _ := zap.NewProduction()
-	return logger.Sugar()
+	return logger
 }

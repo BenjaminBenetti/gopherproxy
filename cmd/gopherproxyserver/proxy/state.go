@@ -21,6 +21,7 @@ func sendStatusUpdateToChannel(channelClients []*proxy.ProxyClient) {
 	}
 
 	for _, client := range channelClients {
+		channelState.YourId = client.Id
 		packet, err := proxcom.NewPacketFromStruct(channelState, proxcom.ChannelState)
 		if err != nil {
 			logging.Get().Errorw("Failed to create channel state packet. Trying to continue to other clients...", "error", err)
