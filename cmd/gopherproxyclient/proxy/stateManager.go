@@ -8,6 +8,7 @@ import (
 
 type stateManager struct {
 	ChannelMembers []*proxcom.ChannelMember
+	ClientManager  *ClientManager
 	// channel will receive true when the client is fully setup and ready to go
 	InitializationChan chan bool
 	Initialized        bool
@@ -18,9 +19,10 @@ type stateManager struct {
 // ============================================
 
 // NewStateManager creates a new state manager
-func NewStateManager() *stateManager {
+func NewStateManager(clientManager *ClientManager) *stateManager {
 	return &stateManager{
 		ChannelMembers:     make([]*proxcom.ChannelMember, 0),
+		ClientManager:      clientManager,
 		InitializationChan: make(chan bool, 1),
 		Initialized:        false,
 	}
@@ -40,6 +42,7 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 
 	client.Id = channelState.YourId
 	manager.ChannelMembers = channelState.CurrentMembers
+	manager.updateFowardingRuleValidity()
 
 	logging.Get().Infow("Channel state updated", "channel", client.Settings.Channel, "members", len(manager.ChannelMembers))
 
@@ -47,5 +50,18 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 		manager.Initialized = true
 		manager.InitializationChan <- true
 		close(manager.InitializationChan)
+	}
+}
+
+func (stateMan *stateManager) updateFowardingRuleValidity() {
+	for _, rule := range stateMan.ClientManager.ForwardingRules {
+		matched := false
+		for _, member := range stateMan.ChannelMembers {
+			if rule.RemoteClient == member.Name {
+				matched = true
+				break
+			}
+		}
+		rule.Valid = matched
 	}
 }

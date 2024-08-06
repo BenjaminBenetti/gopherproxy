@@ -12,9 +12,10 @@ import (
 )
 
 type ClientManager struct {
-	Client       *proxy.ProxyClient
-	StateManager *stateManager
-	Initialized  bool
+	Client          *proxy.ProxyClient
+	StateManager    *stateManager
+	Initialized     bool
+	ForwardingRules []*ForwardingRule
 }
 
 // ============================================
@@ -22,12 +23,14 @@ type ClientManager struct {
 // ============================================
 
 // NewClientManager creates a new client manager
-func NewClientManager(client *proxy.ProxyClient) *ClientManager {
-	return &ClientManager{
-		Client:       client,
-		StateManager: NewStateManager(),
-		Initialized:  false,
+func NewClientManager(client *proxy.ProxyClient, forwardingRules []*ForwardingRule) *ClientManager {
+	clientManager := ClientManager{
+		Client:          client,
+		Initialized:     false,
+		ForwardingRules: forwardingRules,
 	}
+	clientManager.StateManager = NewStateManager(&clientManager)
+	return &clientManager
 }
 
 // ============================================

@@ -6,6 +6,8 @@ to connect to remote systems that normally do not have direct connectivity betwe
 Why make this instead of using something off the shelf?
 Because FUNNNNNN!
 
+![Screenshot of gopherproxy client](./doc/client-example.png)
+
 ## Topology
 The setup is pretty simple. Bot clients connect to 
 the central proxy server, operating in an in-out mode. 
@@ -24,5 +26,5 @@ Simply open the project devcontainer and run the following command:
 Your proxy should now be running at `proxy.gopherproxy.dev`. You can now connect to the proxy server with the client.
 
 ```bash
-go run ./cmd/gopherproxyclient/ --proxy 'wss://proxy.gopherproxy.dev/api/ws/connect' --password abc123 --channel test --name bobross echo
+go run ./cmd/gopherproxyclient/ --proxy 'wss://proxy.gopherproxy.dev/api/ws/connect' --password abc123 --channel test --name bobross start
 ```

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/forwarddisplay"
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
@@ -32,15 +33,19 @@ func main() {
 		panic(err)
 	}
 
-	clientManager := proxy.NewClientManager(client)
+	clientManager := proxy.NewClientManager(client, cliArgs.ForwardingRules)
 	clientManager.Start()
 	clientManager.WaitForInitialization()
 
 	switch cliArgs.Command {
 	case "list":
 		listChannelMembers(cliArgs.Channel, clientManager)
-	case "echo":
-		printLoop(client)
+	case "start":
+		display := forwarddisplay.NewForwardUi(clientManager)
+		display.Build()
+		display.StartDrawing()
+	default:
+		fmt.Printf("Unknown command: %s\n", cliArgs.Command)
 	}
 
 	if !client.Closed {
