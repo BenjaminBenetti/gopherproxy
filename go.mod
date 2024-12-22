@@ -1,6 +1,6 @@
 module github.com/CanadianCommander/gopherproxy
 
-go 1.22.0
+go 1.23.0
 
 require (
 	github.com/bytedance/sonic v1.11.0 // indirect

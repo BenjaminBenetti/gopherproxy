@@ -15,7 +15,7 @@ type ClientManager struct {
 	Client          *proxy.ProxyClient
 	StateManager    *stateManager
 	Initialized     bool
-	ForwardingRules []*ForwardingRule
+	ForwardingRules []*proxcom.ForwardingRule
 }
 
 // ============================================
@@ -23,7 +23,7 @@ type ClientManager struct {
 // ============================================
 
 // NewClientManager creates a new client manager
-func NewClientManager(client *proxy.ProxyClient, forwardingRules []*ForwardingRule) *ClientManager {
+func NewClientManager(client *proxy.ProxyClient, forwardingRules []*proxcom.ForwardingRule) *ClientManager {
 	clientManager := ClientManager{
 		Client:          client,
 		Initialized:     false,

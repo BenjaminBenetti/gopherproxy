@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
+	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 )
 
 type CliArgs struct {
@@ -16,7 +16,7 @@ type CliArgs struct {
 	ClientName      string
 	Debug           bool
 	Command         string
-	ForwardingRules []*proxy.ForwardingRule
+	ForwardingRules []*proxcom.ForwardingRule
 }
 
 // ============================================
@@ -43,9 +43,9 @@ func ParseArgs() CliArgs {
 	command := flag.Arg(0)
 
 	// parse fowarding rules
-	forwardingRules := make([]*proxy.ForwardingRule, 0)
+	forwardingRules := make([]*proxcom.ForwardingRule, 0)
 	for i := 1; i < flag.NArg(); i++ {
-		forwardingRules = append(forwardingRules, proxy.NewForwardingRuleFromArg(flag.Arg(i)))
+		forwardingRules = append(forwardingRules, proxcom.NewForwardingRuleFromArg(flag.Arg(i)))
 	}
 
 	proxyUrl, err := url.Parse(*proxyUrlStr)
