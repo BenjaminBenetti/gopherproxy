@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
+	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 	"github.com/rivo/tview"
 )
 
@@ -96,15 +97,21 @@ func (ui *ForwardUi) drawLoop() {
 
 func (ui *ForwardUi) updateFowardRulesTable() {
 	ui.forwardsTable.Clear()
+	var selectedChannelMember *proxcom.ChannelMember = nil
 	forwardingRules := ui.clientManager.AllForwardingRules()
 
 	// if possible identify the selected client and show only their forwarding rules
 	if ui.clientList.GetCurrentItem() < len(ui.clientManager.StateManager.ChannelMembers) {
-		client := ui.clientManager.StateManager.ChannelMembers[ui.clientList.GetCurrentItem()]
-		forwardingRules = client.ForwardingRules
+		selectedChannelMember = ui.clientManager.StateManager.ChannelMembers[ui.clientList.GetCurrentItem()]
+		forwardingRules = selectedChannelMember.ForwardingRules
 
-		ui.forwardsTable.SetTitle("Forwarding Rules - " + client.Name)
+		ui.forwardsTable.SetTitle("Forwarding Rules - " + selectedChannelMember.Name)
 	}
+
+	// outgoing routes section
+	ui.forwardsTable.SetCell(0, 0, tview.NewTableCell("[yellow]======== Outgoing Routes ========").
+		SetAlign(tview.AlignCenter).
+		SetSelectable(false))
 
 	for idx, rule := range forwardingRules {
 		builder := strings.Builder{}
@@ -117,8 +124,36 @@ func (ui *ForwardUi) updateFowardRulesTable() {
 			str = "[green]" + str + " (online)[-]"
 		}
 
-		ui.forwardsTable.SetCell(idx, 0, tview.NewTableCell(str))
+		ui.forwardsTable.SetCell(idx+1, 0, tview.NewTableCell(str))
 	}
+
+	// incoming routes section
+	if selectedChannelMember != nil {
+		ui.forwardsTable.SetCell(len(forwardingRules)+1, 0, tview.NewTableCell("[yellow] ======== Incoming Routes ========").
+			SetAlign(tview.AlignCenter).
+			SetSelectable(false))
+
+		var incomingRules []*proxcom.ForwardingRule = make([]*proxcom.ForwardingRule, 0)
+		for _, rule := range ui.clientManager.AllForwardingRules() {
+			if rule.RemoteClient == selectedChannelMember.Name {
+				incomingRules = append(incomingRules, rule)
+			}
+		}
+
+		for idx, rule := range incomingRules {
+			builder := strings.Builder{}
+			fmt.Fprintf(&builder, "  %s:%d <- %s <- %d", rule.RemoteHost, rule.RemotePort, rule.RemoteClient, rule.LocalPort)
+			str := builder.String()
+			if !rule.Valid {
+				str = "[red]" + str + " (offline)[-]"
+			} else {
+				str = "[green]" + str + " (online)[-]"
+			}
+
+			ui.forwardsTable.SetCell(idx+len(forwardingRules)+2, 0, tview.NewTableCell(str))
+		}
+	}
+
 }
 
 func (ui *ForwardUi) updateClientsList() {
