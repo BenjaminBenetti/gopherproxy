@@ -82,6 +82,25 @@ func (manager *ClientManager) AllForwardingRules() []*proxcom.ForwardingRule {
 	return rules
 }
 
+// AllForwardingRulesTargetingClient returns all forwarding rules that target a specific client
+// @param clientName the name of the client we are looking for rules targeting
+func (manager *ClientManager) AllForwardingRulesTargetingClient(clientName string) []*proxcom.ForwardingRule {
+	var rules []*proxcom.ForwardingRule = make([]*proxcom.ForwardingRule, 0)
+
+	for _, rule := range manager.AllForwardingRules() {
+		if rule.RemoteClient == clientName {
+			rules = append(rules, rule)
+		}
+	}
+
+	return rules
+}
+
+// AllRulesTargetingUs returns all forwarding rules that target this client
+func (manager *ClientManager) AllRulesTargetingUs() []*proxcom.ForwardingRule {
+	return manager.AllForwardingRulesTargetingClient(manager.Client.Settings.Name)
+}
+
 // ============================================
 // Event Handlers
 // ============================================

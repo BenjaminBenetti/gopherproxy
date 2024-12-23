@@ -133,12 +133,7 @@ func (ui *ForwardUi) updateFowardRulesTable() {
 			SetAlign(tview.AlignCenter).
 			SetSelectable(false))
 
-		var incomingRules []*proxcom.ForwardingRule = make([]*proxcom.ForwardingRule, 0)
-		for _, rule := range ui.clientManager.AllForwardingRules() {
-			if rule.RemoteClient == selectedChannelMember.Name {
-				incomingRules = append(incomingRules, rule)
-			}
-		}
+		incomingRules := ui.clientManager.AllForwardingRulesTargetingClient(selectedChannelMember.Name)
 
 		for idx, rule := range incomingRules {
 			builder := strings.Builder{}
