@@ -1,4 +1,4 @@
-package proxcom
+package proxy
 
 type Endpoint struct {
 	Ip   string

@@ -1,4 +1,4 @@
-package proxcom
+package proxy
 
 import (
 	"bytes"
@@ -13,7 +13,13 @@ const (
 	Data PacketType = iota
 	Error
 	CriticalError
+	// update all clients with the current channel state info. e.g. list of channel members
+	// and other channel specific information
 	ChannelState
+	// sent by a channel member to update their info
+	// The server will then emit a ChannelState packet to all clients in the channel
+	// to let them know about the new member info
+	MemberInfo
 	SocketConnect
 	SocketDisconnect
 )

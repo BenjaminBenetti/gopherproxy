@@ -1,12 +1,15 @@
 package proxcom
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 // Member of a channel. Used to keep track of who is in the channel
 // and where messages can be sent.
 type ChannelMember struct {
-	Id   uuid.UUID
-	Name string
+	Id              uuid.UUID
+	Name            string
+	ForwardingRules []*ForwardingRule
 }
 
 // ===========================================
@@ -17,7 +20,8 @@ type ChannelMember struct {
 // @param name: the name of the channel member
 func NewChannelMember(name string) *ChannelMember {
 	return &ChannelMember{
-		Id:   uuid.New(),
-		Name: name,
+		Id:              uuid.New(),
+		Name:            name,
+		ForwardingRules: make([]*ForwardingRule, 0),
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/forwarddisplay"
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
-	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
 	"go.uber.org/zap"
 )
@@ -71,14 +70,14 @@ func printLoop(client *proxylib.ProxyClient) {
 		reader := bufio.NewReader(os.Stdin)
 		command, _ := reader.ReadString('\n')
 
-		packet := proxcom.Packet{
-			Type: proxcom.Data,
-			Target: proxcom.Endpoint{
+		packet := proxylib.Packet{
+			Type: proxylib.Data,
+			Target: proxylib.Endpoint{
 				Ip:   "0.0.0.0",
 				Port: 70,
 				Name: "gopherserver",
 			},
-			Source: proxcom.Endpoint{
+			Source: proxylib.Endpoint{
 				Ip:   "127.0.0.1",
 				Port: 12345,
 				Name: "gopherproxyclient",

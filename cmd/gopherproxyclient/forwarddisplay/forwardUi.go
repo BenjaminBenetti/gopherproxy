@@ -13,7 +13,7 @@ import (
 type ForwardUi struct {
 	Running         bool
 	RefreshInterval time.Duration
-	clientMannager  *proxy.ClientManager
+	clientManager   *proxy.ClientManager
 
 	uiApp         *tview.Application
 	gridLayout    *tview.Grid
@@ -29,8 +29,8 @@ type ForwardUi struct {
 func NewForwardUi(clientManager *proxy.ClientManager) *ForwardUi {
 	return &ForwardUi{
 		Running:         false,
-		RefreshInterval: 1 * time.Second,
-		clientMannager:  clientManager,
+		RefreshInterval: 250 * time.Millisecond,
+		clientManager:   clientManager,
 	}
 }
 
@@ -96,7 +96,17 @@ func (ui *ForwardUi) drawLoop() {
 
 func (ui *ForwardUi) updateFowardRulesTable() {
 	ui.forwardsTable.Clear()
-	for idx, rule := range ui.clientMannager.ForwardingRules {
+	forwardingRules := ui.clientManager.AllForwardingRules()
+
+	// if possible identify the selected client and show only their forwarding rules
+	if ui.clientList.GetCurrentItem() < len(ui.clientManager.StateManager.ChannelMembers) {
+		client := ui.clientManager.StateManager.ChannelMembers[ui.clientList.GetCurrentItem()]
+		forwardingRules = client.ForwardingRules
+
+		ui.forwardsTable.SetTitle("Forwarding Rules - " + client.Name)
+	}
+
+	for idx, rule := range forwardingRules {
 		builder := strings.Builder{}
 		fmt.Fprintf(&builder, "  %d -> %s -> %s:%d", rule.LocalPort, rule.RemoteClient, rule.RemoteHost, rule.RemotePort)
 
@@ -112,10 +122,10 @@ func (ui *ForwardUi) updateFowardRulesTable() {
 }
 
 func (ui *ForwardUi) updateClientsList() {
-	for idx, client := range ui.clientMannager.StateManager.ChannelMembers {
+	for idx, client := range ui.clientManager.StateManager.ChannelMembers {
 
 		secondaryText := "Remote"
-		if client.Id == ui.clientMannager.Client.Id {
+		if client.Id == ui.clientManager.Client.Id {
 			secondaryText = "You"
 		}
 
@@ -127,7 +137,7 @@ func (ui *ForwardUi) updateClientsList() {
 	}
 
 	// remove any extra items
-	itemDiff := ui.clientList.GetItemCount() - len(ui.clientMannager.StateManager.ChannelMembers)
+	itemDiff := ui.clientList.GetItemCount() - len(ui.clientManager.StateManager.ChannelMembers)
 	if itemDiff > 0 {
 		for range itemDiff {
 			ui.clientList.RemoveItem(ui.clientList.GetItemCount() - 1)

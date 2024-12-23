@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
-	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -12,8 +11,8 @@ import (
 type ProxyClient struct {
 	Id            uuid.UUID
 	WsCon         *websocket.Conn
-	InputChannel  chan proxcom.Packet
-	OutputChannel chan proxcom.Packet
+	InputChannel  chan Packet
+	OutputChannel chan Packet
 	CloseChannel  chan bool
 	Closed        bool
 	Settings      ProxyClientSettings
@@ -35,8 +34,8 @@ func newProxyClient(wsCon *websocket.Conn, settings ProxyClientSettings) *ProxyC
 	var client = ProxyClient{
 		Id:            uuid.New(),
 		WsCon:         wsCon,
-		InputChannel:  make(chan proxcom.Packet, proxyChannelBufferSize),
-		OutputChannel: make(chan proxcom.Packet, proxyChannelBufferSize),
+		InputChannel:  make(chan Packet, proxyChannelBufferSize),
+		OutputChannel: make(chan Packet, proxyChannelBufferSize),
 		CloseChannel:  make(chan bool, 1),
 		Closed:        false,
 		Settings:      settings,
@@ -59,16 +58,16 @@ func newProxyClient(wsCon *websocket.Conn, settings ProxyClientSettings) *ProxyC
 // Public Methods
 // ============================================
 
-func (client *ProxyClient) Write(packet proxcom.Packet) {
+func (client *ProxyClient) Write(packet Packet) {
 	client.InputChannel <- packet
 }
 
-func (client *ProxyClient) Read() (proxcom.Packet, bool) {
+func (client *ProxyClient) Read() (Packet, bool) {
 	select {
 	case packet, ok := <-client.OutputChannel:
 		return packet, ok
 	case <-client.CloseChannel:
-		return proxcom.Packet{}, false
+		return Packet{}, false
 	}
 }
 
@@ -104,7 +103,7 @@ func (client *ProxyClient) messagePump() {
 		}
 
 		if msgType == websocket.BinaryMessage {
-			packet, err := proxcom.NewPacketFromBytes(message)
+			packet, err := NewPacketFromBytes(message)
 			if err != nil {
 				logging.Get().Warn("Failed to decode incoming packet from remote websocket",
 					"error", err,

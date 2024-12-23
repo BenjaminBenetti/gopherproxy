@@ -29,10 +29,29 @@ func NewStateManager(clientManager *ClientManager) *stateManager {
 }
 
 // ============================================
+// Public Methods
+// ============================================
+
+// SendOurChannelMemberInfoToServer sends the channel member info to the server
+// for this client. This lets the server know about our current state.
+func (manager *stateManager) SendOurChannelMemberInfoToServer() error {
+	channelMember := manager.ClientManager.GetChannelMemberInfo()
+
+	packet, err := proxy.NewPacketFromStruct(channelMember, proxy.MemberInfo)
+	if err != nil {
+		logging.Get().Errorw("Failed to create member info packet", "error", err)
+		return err
+	}
+
+	manager.ClientManager.Client.Write(*packet)
+	return nil
+}
+
+// ============================================
 // Event Handlers
 // ============================================
 
-func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packet proxcom.Packet) {
+func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packet proxy.Packet) {
 	var channelState proxcom.ChannelStateInfo
 
 	err := packet.DecodeJsonData(&channelState)
@@ -42,7 +61,7 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 
 	client.Id = channelState.YourId
 	manager.ChannelMembers = channelState.CurrentMembers
-	manager.updateFowardingRuleValidity()
+	manager.updateForwardingRuleValidity()
 
 	logging.Get().Infow("Channel state updated", "channel", client.Settings.Channel, "members", len(manager.ChannelMembers))
 
@@ -53,7 +72,8 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 	}
 }
 
-func (stateMan *stateManager) updateFowardingRuleValidity() {
+func (stateMan *stateManager) updateForwardingRuleValidity() {
+	stateChange := false
 	for _, rule := range stateMan.ClientManager.ForwardingRules {
 		matched := false
 		for _, member := range stateMan.ChannelMembers {
@@ -62,6 +82,13 @@ func (stateMan *stateManager) updateFowardingRuleValidity() {
 				break
 			}
 		}
+		if rule.Valid != matched {
+			stateChange = true
+		}
 		rule.Valid = matched
+	}
+
+	if stateChange {
+		stateMan.SendOurChannelMemberInfoToServer()
 	}
 }
