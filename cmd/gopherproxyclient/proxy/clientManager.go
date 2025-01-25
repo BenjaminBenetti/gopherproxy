@@ -15,6 +15,7 @@ import (
 type ClientManager struct {
 	Client          *proxy.ProxyClient
 	StateManager    *stateManager
+	SocketManager   *SocketManager
 	Initialized     bool
 	ForwardingRules []*proxcom.ForwardingRule
 }
@@ -31,6 +32,7 @@ func NewClientManager(client *proxy.ProxyClient, forwardingRules []*proxcom.Forw
 		ForwardingRules: forwardingRules,
 	}
 	clientManager.StateManager = NewStateManager(&clientManager)
+	clientManager.SocketManager = NewSocketManager(&clientManager)
 	return &clientManager
 }
 
@@ -44,6 +46,14 @@ func (manager *ClientManager) Start() {
 	createSigtermHandler(manager.Client)
 }
 
+// Close closes the client manager
+func (manager *ClientManager) Close() {
+	manager.SocketManager.Close()
+	if !manager.Client.Closed {
+		manager.Client.Close()
+	}
+}
+
 func (manager *ClientManager) WaitForInitialization() {
 	if !manager.Initialized {
 		<-manager.StateManager.InitializationChan
@@ -53,6 +63,12 @@ func (manager *ClientManager) WaitForInitialization() {
 
 		// send the initial status update
 		manager.StateManager.SendOurChannelMemberInfoToServer()
+	}
+}
+
+func (manager *ClientManager) ListenOnAllForwardingRules() {
+	for _, rule := range manager.ForwardingRules {
+		manager.SocketManager.Listen(rule.LocalPort, "tcp4")
 	}
 }
 

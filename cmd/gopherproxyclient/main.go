@@ -40,6 +40,7 @@ func main() {
 	case "list":
 		listChannelMembers(cliArgs.Channel, clientManager)
 	case "start":
+		clientManager.ListenOnAllForwardingRules()
 		display := forwarddisplay.NewForwardUi(clientManager)
 		display.Build()
 		display.StartDrawing()
@@ -47,9 +48,7 @@ func main() {
 		fmt.Printf("Unknown command: %s\n", cliArgs.Command)
 	}
 
-	if !client.Closed {
-		client.Close()
-	}
+	clientManager.Close()
 }
 
 func listChannelMembers(channel string, clientManager *proxy.ClientManager) {

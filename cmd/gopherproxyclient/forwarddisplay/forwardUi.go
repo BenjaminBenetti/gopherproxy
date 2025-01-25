@@ -148,7 +148,6 @@ func (ui *ForwardUi) updateFowardRulesTable() {
 			ui.forwardsTable.SetCell(idx+len(forwardingRules)+2, 0, tview.NewTableCell(str))
 		}
 	}
-
 }
 
 func (ui *ForwardUi) updateClientsList() {
