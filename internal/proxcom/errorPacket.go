@@ -20,9 +20,8 @@ func NewCriticalErrorPacket(err error) *proxy.Packet {
 
 func newErrorPacket(err error, tp proxy.PacketType) *proxy.Packet {
 	return &proxy.Packet{
-		Type:   tp,
-		Target: proxy.Endpoint{},
-		Source: proxy.Endpoint{},
-		Data:   []byte(err.Error()),
+		Type: tp,
+		Chan: proxy.SocketChannel{},
+		Data: []byte(err.Error()),
 	}
 }

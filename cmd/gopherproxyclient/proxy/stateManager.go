@@ -72,6 +72,19 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 	}
 }
 
+// getChannelMemberForRule returns the channel member matching the given rule
+// or nil if no such member exists
+// @param rule the rule to match
+// @return the channel member or nil
+func (stateMan *stateManager) getChannelMemberForRule(rule *proxcom.ForwardingRule) *proxcom.ChannelMember {
+	for _, member := range stateMan.ChannelMembers {
+		if member.Name == rule.RemoteClient {
+			return member
+		}
+	}
+	return nil
+}
+
 func (stateMan *stateManager) updateForwardingRuleValidity() {
 	stateChange := false
 	for _, rule := range stateMan.ClientManager.ForwardingRules {

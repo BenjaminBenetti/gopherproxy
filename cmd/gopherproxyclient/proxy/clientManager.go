@@ -68,7 +68,7 @@ func (manager *ClientManager) WaitForInitialization() {
 
 func (manager *ClientManager) ListenOnAllForwardingRules() {
 	for _, rule := range manager.ForwardingRules {
-		manager.SocketManager.Listen(rule.LocalPort, "tcp4")
+		manager.SocketManager.Listen(rule.LocalPort, "tcp4", rule)
 	}
 }
 
@@ -122,7 +122,7 @@ func (manager *ClientManager) AllRulesTargetingUs() []*proxcom.ForwardingRule {
 // ============================================
 
 func (manager *ClientManager) handleData(client *proxy.ProxyClient, packet proxy.Packet) {
-	fmt.Printf("Received data packet from %s: %s\n", packet.Source.Name, string(packet.Data))
+	fmt.Printf("Received data packet from %s: %s\n", packet.Chan.Name, string(packet.Data))
 }
 
 func (manager *ClientManager) handleError(client *proxy.ProxyClient, packet proxy.Packet) {
@@ -138,14 +138,9 @@ func (manager *ClientManager) handleCriticalError(client *proxy.ProxyClient, pac
 	os.Exit(1)
 }
 
-func (manager *ClientManager) handleSocketConnect(client *proxy.ProxyClient, packet proxy.Packet) {
-	logging.Get().Infow("Received socket connect packet",
-		"endpoint", packet.Target)
-}
-
 func (manager *ClientManager) handleSocketDisconnect(client *proxy.ProxyClient, packet proxy.Packet) {
 	logging.Get().Infow("Received socket disconnect packet",
-		"endpoint", packet.Target)
+		"endpoint", packet.Chan)
 }
 
 // ============================================
@@ -179,7 +174,7 @@ func messageProcessingLoop(manager *ClientManager, client *proxy.ProxyClient) {
 			case proxy.ChannelState:
 				manager.StateManager.handleChannelState(client, packet)
 			case proxy.SocketConnect:
-				manager.handleSocketConnect(client, packet)
+				manager.SocketManager.handleSocketConnect(client, packet)
 			case proxy.SocketDisconnect:
 				manager.handleSocketDisconnect(client, packet)
 			}

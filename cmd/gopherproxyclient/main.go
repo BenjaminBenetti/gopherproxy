@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/forwarddisplay"
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
@@ -59,31 +57,5 @@ func listChannelMembers(channel string, clientManager *proxy.ClientManager) {
 		} else {
 			fmt.Printf("  %s \n", member.Name)
 		}
-	}
-}
-
-func printLoop(client *proxylib.ProxyClient) {
-
-	for {
-		fmt.Print("> ")
-		reader := bufio.NewReader(os.Stdin)
-		command, _ := reader.ReadString('\n')
-
-		packet := proxylib.Packet{
-			Type: proxylib.Data,
-			Target: proxylib.Endpoint{
-				Ip:   "0.0.0.0",
-				Port: 70,
-				Name: "gopherserver",
-			},
-			Source: proxylib.Endpoint{
-				Ip:   "127.0.0.1",
-				Port: 12345,
-				Name: "gopherproxyclient",
-			},
-			Data: []byte(command),
-		}
-
-		client.Write(packet)
 	}
 }

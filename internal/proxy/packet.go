@@ -25,10 +25,9 @@ const (
 )
 
 type Packet struct {
-	Type   PacketType
-	Target Endpoint
-	Source Endpoint
-	Data   []byte
+	Type PacketType
+	Chan SocketChannel
+	Data []byte
 }
 
 // ============================================
@@ -39,10 +38,9 @@ type Packet struct {
 func NewPacketFromBytes(data []byte) (*Packet, error) {
 
 	var packet = Packet{
-		Type:   Data,
-		Target: Endpoint{},
-		Source: Endpoint{},
-		Data:   nil,
+		Type: Data,
+		Chan: SocketChannel{},
+		Data: nil,
 	}
 
 	var err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&packet)
@@ -57,10 +55,9 @@ func NewPacketFromStruct(obj any, typ PacketType) (*Packet, error) {
 	}
 
 	return &Packet{
-		Type:   typ,
-		Target: Endpoint{},
-		Source: Endpoint{},
-		Data:   bytes,
+		Type: typ,
+		Chan: SocketChannel{},
+		Data: bytes,
 	}, err
 }
 

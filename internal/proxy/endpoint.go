@@ -1,7 +1,6 @@
 package proxy
 
-type Endpoint struct {
-	Ip   string
-	Port int
+type SocketChannel struct {
+	Id   string
 	Name string
 }
