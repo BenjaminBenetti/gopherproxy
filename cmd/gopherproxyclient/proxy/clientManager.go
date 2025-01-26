@@ -24,14 +24,14 @@ type ClientManager struct {
 // ============================================
 
 // NewClientManager creates a new client manager
-func NewClientManager(client *proxy.ProxyClient, forwardingRules []*proxcom.ForwardingRule) *ClientManager {
+func NewClientManager(client *proxy.ProxyClient, forwardingRules []*proxcom.ForwardingRule, debugPackets bool) *ClientManager {
 	clientManager := ClientManager{
 		Client:          client,
 		Initialized:     false,
 		ForwardingRules: forwardingRules,
 	}
 	clientManager.StateManager = NewStateManager(&clientManager)
-	clientManager.SocketManager = NewSocketManager(&clientManager)
+	clientManager.SocketManager = NewSocketManager(&clientManager, debugPackets)
 	return &clientManager
 }
 

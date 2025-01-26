@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	clientManager := proxy.NewClientManager(client, cliArgs.ForwardingRules)
+	clientManager := proxy.NewClientManager(client, cliArgs.ForwardingRules, cliArgs.DebugPrintPackets)
 	clientManager.Start()
 	clientManager.WaitForInitialization()
 

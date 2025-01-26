@@ -21,6 +21,7 @@ type SocketManager struct {
 	socketMutex          sync.Mutex
 	listenerMutex        sync.Mutex
 	socketChannelCreated chan proxcom.CreateSocketChannelPacket
+	debugPackets         bool
 }
 
 const PACKET_READ_SIZE = 1024
@@ -31,12 +32,13 @@ const SOCKET_CHANNEL_CREATE_TIMEOUT = 5 * time.Second
 // ============================================
 
 // NewSocketManager creates a new socket manager
-func NewSocketManager(clientManager *ClientManager) *SocketManager {
+func NewSocketManager(clientManager *ClientManager, debugPackets bool) *SocketManager {
 	return &SocketManager{
 		ClientManager:        clientManager,
 		Listeners:            make([]*net.TCPListener, 0),
 		Sockets:              make(map[string][]*net.TCPConn),
 		socketChannelCreated: make(chan proxcom.CreateSocketChannelPacket, 10),
+		debugPackets:         debugPackets,
 	}
 }
 
@@ -70,6 +72,10 @@ func (socketManager *SocketManager) SendDataToSocket(packet *proxy.Packet) error
 
 	if socketManager.Sockets[packet.Chan.Id] == nil {
 		return errors.New("could not find a socket for the channel id")
+	}
+
+	if socketManager.debugPackets {
+		logging.Get().Infow("Sending data to socket", "packet", string(packet.Data))
 	}
 
 	for _, socket := range socketManager.Sockets[packet.Chan.Id] {
@@ -220,14 +226,18 @@ func (socketManager *SocketManager) listenLoop(listener *net.TCPListener, rule *
 // @param socket the socket to read packets from
 // @param socketChannelId the id of the socket channel to forward packets to
 func (socketManager *SocketManager) packetPump(socket *net.TCPConn, socketChannelId string) {
-	buffer := make([]byte, PACKET_READ_SIZE)
 	for {
 		// read the packet
+		buffer := make([]byte, PACKET_READ_SIZE)
 		bytesRead, err := socket.Read(buffer)
 		if err != nil {
 			logging.Get().Warn("Error reading from socket. Closing connection", "error", err)
 			socket.Close()
 			break
+		}
+
+		if socketManager.debugPackets {
+			logging.Get().Infow("Received packet from socket", "port", socket.LocalAddr().String(), "channelId", socketChannelId, "packet", string(buffer[:bytesRead]))
 		}
 
 		// proxy the packet.

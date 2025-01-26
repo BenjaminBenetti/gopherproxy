@@ -10,13 +10,14 @@ import (
 )
 
 type CliArgs struct {
-	ProxyUrl        url.URL
-	Password        string
-	Channel         string
-	ClientName      string
-	Debug           bool
-	Command         string
-	ForwardingRules []*proxcom.ForwardingRule
+	ProxyUrl          url.URL
+	Password          string
+	Channel           string
+	ClientName        string
+	Debug             bool
+	DebugPrintPackets bool
+	Command           string
+	ForwardingRules   []*proxcom.ForwardingRule
 }
 
 // ============================================
@@ -32,6 +33,7 @@ func ParseArgs() CliArgs {
 	channel := flag.String("channel", "", "The channel to connect to. Use the same channel name on both ends of the connection.")
 	clientName := flag.String("name", "", "The name of the client connecting to the proxy. Use this to organize clients. Defaults to the hostname of the machine.")
 	debug := flag.Bool("debug", false, "Enable debug logging")
+	debugPrintPackets := flag.Bool("debug-packets", false, "Enable debug logging of packets")
 
 	flag.Parse()
 	if flag.NArg() == 0 {
@@ -63,13 +65,14 @@ func ParseArgs() CliArgs {
 	}
 
 	cliArgs := CliArgs{
-		ProxyUrl:        *proxyUrl,
-		Password:        *password,
-		Channel:         *channel,
-		ClientName:      *clientName,
-		Debug:           *debug,
-		Command:         command,
-		ForwardingRules: forwardingRules,
+		ProxyUrl:          *proxyUrl,
+		Password:          *password,
+		Channel:           *channel,
+		ClientName:        *clientName,
+		Debug:             *debug,
+		DebugPrintPackets: *debugPrintPackets,
+		Command:           command,
+		ForwardingRules:   forwardingRules,
 	}
 
 	validateArgs(cliArgs)
