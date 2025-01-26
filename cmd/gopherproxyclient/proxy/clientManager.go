@@ -123,7 +123,9 @@ func (manager *ClientManager) AllRulesTargetingUs() []*proxcom.ForwardingRule {
 func (manager *ClientManager) handleData(client *proxy.ProxyClient, packet proxy.Packet) {
 	err := manager.SocketManager.SendDataToSocket(&packet)
 	if err != nil {
-		logging.Get().Errorw("Failed to send data to socket", "error", err)
+		if err.Error() != "EOF" {
+			logging.Get().Errorw("Failed to send data to socket", "error", err)
+		}
 	}
 }
 

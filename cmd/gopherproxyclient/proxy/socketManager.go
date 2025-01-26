@@ -24,7 +24,7 @@ type SocketManager struct {
 	debugPackets         bool
 }
 
-const PACKET_READ_SIZE = 1024
+const PACKET_READ_SIZE = 1024 * 1024 // 1MB
 const SOCKET_CHANNEL_CREATE_TIMEOUT = 5 * time.Second
 
 // ============================================
@@ -78,10 +78,11 @@ func (socketManager *SocketManager) SendDataToSocket(packet *proxy.Packet) error
 		logging.Get().Infow("Sending data to socket", "packet", string(packet.Data))
 	}
 
-	for _, socket := range socketManager.Sockets[packet.Chan.Id] {
+	for idx, socket := range socketManager.Sockets[packet.Chan.Id] {
 		_, err := socket.Write(packet.Data)
 		if err != nil {
-			return err
+			socket.Close()
+			socketManager.Sockets[packet.Chan.Id] = append(socketManager.Sockets[packet.Chan.Id][:idx], socketManager.Sockets[packet.Chan.Id][idx+1:]...)
 		}
 	}
 
@@ -231,7 +232,8 @@ func (socketManager *SocketManager) packetPump(socket *net.TCPConn, socketChanne
 		buffer := make([]byte, PACKET_READ_SIZE)
 		bytesRead, err := socket.Read(buffer)
 		if err != nil {
-			logging.Get().Warn("Error reading from socket. Closing connection", "error", err)
+			// debug because this is a normal operation
+			logging.Get().Debugw("Error reading from socket. Closing connection", "error", err)
 			socket.Close()
 			break
 		}
