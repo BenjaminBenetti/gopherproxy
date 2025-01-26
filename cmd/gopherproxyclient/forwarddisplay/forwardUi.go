@@ -2,7 +2,6 @@ package forwarddisplay
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -179,7 +178,20 @@ func (ui *ForwardUi) updateMetrics() {
 	ui.metrics.Clear()
 
 	builder := strings.Builder{}
-	fmt.Fprintf(&builder, "Tx: %f Rx: %f", rand.Float64()*100, rand.Float64()*100)
+
+	Tx := ui.clientManager.SocketManager.Tx
+	if Tx > 1024 {
+		fmt.Fprintf(&builder, "Tx: %.2f KB ", float64(Tx)/1024)
+	} else {
+		fmt.Fprintf(&builder, "Tx: %d B ", Tx)
+	}
+
+	Rx := ui.clientManager.SocketManager.Rx
+	if Rx > 1024 {
+		fmt.Fprintf(&builder, "Rx: %.2f KB", float64(Rx)/1024)
+	} else {
+		fmt.Fprintf(&builder, "Rx: %d B", Rx)
+	}
 
 	ui.metrics.SetText(builder.String())
 }

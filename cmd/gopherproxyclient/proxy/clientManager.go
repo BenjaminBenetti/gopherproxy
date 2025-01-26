@@ -62,6 +62,7 @@ func (manager *ClientManager) WaitForInitialization() {
 
 		// send the initial status update
 		manager.StateManager.SendOurChannelMemberInfoToServer()
+		manager.SocketManager.Start()
 	}
 }
 

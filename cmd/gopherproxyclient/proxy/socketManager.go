@@ -22,6 +22,13 @@ type SocketManager struct {
 	listenerMutex        sync.Mutex
 	socketChannelCreated chan proxcom.CreateSocketChannelPacket
 	debugPackets         bool
+
+	// metrics
+	Rx                       uint64
+	Tx                       uint64
+	BytesSentAccumulator     uint64
+	BytesReceivedAccumulator uint64
+	metricsMutex             sync.Mutex
 }
 
 const PACKET_READ_SIZE = 1024 * 1024 // 1MB
@@ -39,12 +46,19 @@ func NewSocketManager(clientManager *ClientManager, debugPackets bool) *SocketMa
 		Sockets:              make(map[string][]*net.TCPConn),
 		socketChannelCreated: make(chan proxcom.CreateSocketChannelPacket, 10),
 		debugPackets:         debugPackets,
+
+		Rx: 0,
+		Tx: 0,
 	}
 }
 
 // ============================================
 // Public Methods
 // ============================================
+
+func (socketManager *SocketManager) Start() {
+	go socketManager.UpdateMetricsRoutine()
+}
 
 // Listen starts the socket manager listening on the specified port
 // @param port the port to listen on
@@ -85,6 +99,8 @@ func (socketManager *SocketManager) SendDataToSocket(packet *proxy.Packet) error
 			socketManager.Sockets[packet.Chan.Id] = append(socketManager.Sockets[packet.Chan.Id][:idx], socketManager.Sockets[packet.Chan.Id][idx+1:]...)
 		}
 	}
+
+	socketManager.RecordBytesSent(uint64(len(packet.Data)))
 
 	return nil
 }
@@ -171,6 +187,24 @@ func (socketManager *SocketManager) AddChannelSocket(channelId string, conn *net
 	socketManager.Sockets[channelId] = append(socketManager.Sockets[channelId], conn)
 }
 
+// RecordBytesSent records the number of bytes sent for metrics
+// @param sent the number of bytes sent
+func (socketManager *SocketManager) RecordBytesSent(sent uint64) {
+	socketManager.metricsMutex.Lock()
+	defer socketManager.metricsMutex.Unlock()
+
+	socketManager.BytesSentAccumulator += sent
+}
+
+// RecordBytesReceived records the number of bytes received for metrics
+// @param received the number of bytes received
+func (socketManager *SocketManager) RecordBytesReceived(received uint64) {
+	socketManager.metricsMutex.Lock()
+	defer socketManager.metricsMutex.Unlock()
+
+	socketManager.BytesReceivedAccumulator += received
+}
+
 // ============================================
 // Event Handlers
 // ============================================
@@ -242,9 +276,30 @@ func (socketManager *SocketManager) packetPump(socket *net.TCPConn, socketChanne
 			logging.Get().Infow("Received packet from socket", "port", socket.LocalAddr().String(), "channelId", socketChannelId, "packet", string(buffer[:bytesRead]))
 		}
 
+		// update metrics
+		socketManager.RecordBytesReceived(uint64(bytesRead))
+
 		// proxy the packet.
 		packet := proxy.NewPacketOfBytes(buffer[:bytesRead], proxy.Data)
 		packet.Chan = proxy.SocketChannel{Id: socketChannelId}
 		socketManager.ClientManager.Client.Write(*packet)
+	}
+}
+
+// UpdateMetrics updates the metrics for the socket manager, Tx and Rx
+// every second
+func (socketManager *SocketManager) UpdateMetricsRoutine() {
+
+	for {
+		<-time.After(1 * time.Second)
+		socketManager.metricsMutex.Lock()
+
+		socketManager.Tx = (socketManager.Tx + socketManager.BytesSentAccumulator) / 2
+		socketManager.Rx = (socketManager.Rx + socketManager.BytesReceivedAccumulator) / 2
+
+		socketManager.BytesSentAccumulator = 0
+		socketManager.BytesReceivedAccumulator = 0
+
+		socketManager.metricsMutex.Unlock()
 	}
 }
