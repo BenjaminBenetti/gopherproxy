@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"slices"
@@ -122,7 +121,10 @@ func (manager *ClientManager) AllRulesTargetingUs() []*proxcom.ForwardingRule {
 // ============================================
 
 func (manager *ClientManager) handleData(client *proxy.ProxyClient, packet proxy.Packet) {
-	fmt.Printf("Received data packet from %s: %s\n", packet.Chan.Name, string(packet.Data))
+	err := manager.SocketManager.SendDataToSocket(&packet)
+	if err != nil {
+		logging.Get().Errorw("Failed to send data to socket", "error", err)
+	}
 }
 
 func (manager *ClientManager) handleError(client *proxy.ProxyClient, packet proxy.Packet) {

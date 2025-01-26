@@ -9,7 +9,9 @@ var logger *zap.SugaredLogger
 
 // Init initializes the logger
 func CreateLogger(logLevel zapcore.Level) {
-	zlog, _ := zap.NewProduction(zap.IncreaseLevel(logLevel))
+	config := zap.NewProductionConfig()
+	config.Level = zap.NewAtomicLevelAt(logLevel)
+	zlog, _ := config.Build()
 	logger = zlog.Sugar()
 }
 

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -14,8 +15,10 @@ import (
 type SocketManager struct {
 	ClientManager *ClientManager
 	Listeners     []*net.TCPListener
-	Sockets       []*net.TCPConn
+	// map, channel id -> socket
+	Sockets map[string][]*net.TCPConn
 
+	socketMutex          sync.Mutex
 	listenerMutex        sync.Mutex
 	socketChannelCreated chan proxcom.CreateSocketChannelPacket
 }
@@ -30,9 +33,10 @@ const SOCKET_CHANNEL_CREATE_TIMEOUT = 5 * time.Second
 // NewSocketManager creates a new socket manager
 func NewSocketManager(clientManager *ClientManager) *SocketManager {
 	return &SocketManager{
-		ClientManager: clientManager,
-		Listeners:     make([]*net.TCPListener, 0),
-		Sockets:       make([]*net.TCPConn, 0),
+		ClientManager:        clientManager,
+		Listeners:            make([]*net.TCPListener, 0),
+		Sockets:              make(map[string][]*net.TCPConn),
+		socketChannelCreated: make(chan proxcom.CreateSocketChannelPacket, 10),
 	}
 }
 
@@ -57,6 +61,53 @@ func (socketManager *SocketManager) Listen(port int, tcpType string, rule *proxc
 	go socketManager.listenLoop(listener, rule)
 }
 
+// SendDataToSocket sends data in the packet to a socket based on active socket channels
+// @param packet the packet to send
+// @return an error if one occurred
+func (socketManager *SocketManager) SendDataToSocket(packet *proxy.Packet) error {
+	socketManager.socketMutex.Lock()
+	defer socketManager.socketMutex.Unlock()
+
+	if socketManager.Sockets[packet.Chan.Id] == nil {
+		return errors.New("could not find a socket for the channel id")
+	}
+
+	for _, socket := range socketManager.Sockets[packet.Chan.Id] {
+		_, err := socket.Write(packet.Data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ConnectOutbound connects to the server on the specified port in the forwarding rule
+func (socketManager *SocketManager) ConnectOutbound(socketChannel proxcom.CreateSocketChannelPacket) {
+	logging.Get().Debugw("Connecting to outbound server", "channelId", socketChannel.Id, "remoteHost", socketChannel.ForwardingRule.RemoteHost, "remotePort", socketChannel.ForwardingRule.RemotePort)
+
+	// connect to the server
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", socketChannel.ForwardingRule.RemoteHost, socketChannel.ForwardingRule.RemotePort))
+	if err != nil {
+		logging.Get().Errorw("Error connecting to outbound server", "error", err)
+		return
+	}
+
+	logging.Get().Debugw("Established outgoing socket", "channelId", socketChannel.Id)
+	go socketManager.packetPump(conn.(*net.TCPConn), socketChannel.Id)
+
+	// notify proxy server
+	packet, err := proxy.NewPacketFromStruct(&socketChannel, proxy.SocketConnect)
+	if err != nil {
+		logging.Get().Errorw("Error notifying proxy server of successful connect ", "error", err)
+		conn.Close()
+		return
+	}
+
+	socketManager.AddChannelSocket(socketChannel.Id, conn.(*net.TCPConn))
+	socketManager.ClientManager.Client.Write(*packet)
+}
+
 // Close closes the socket manager. Closing all listeners and sockets
 func (socketManager *SocketManager) Close() {
 	socketManager.listenerMutex.Lock()
@@ -70,6 +121,8 @@ func (socketManager *SocketManager) Close() {
 // EstablishSocketChannel establishes a socket channel with the server
 // This channel is used to proxy packets between the source and sink defined in the forwarding rule
 func (socketManager *SocketManager) EstablishSocketChannel(rule *proxcom.ForwardingRule) (string, error) {
+	logging.Get().Debugw("Establishing socket channel", "rule", rule)
+
 	socketManager.listenerMutex.Lock()
 	defer socketManager.listenerMutex.Unlock()
 
@@ -100,12 +153,24 @@ func (socketManager *SocketManager) EstablishSocketChannel(rule *proxcom.Forward
 	return "", errors.New("socket channel creation failed")
 }
 
+// AddChannelSocket adds a socket to the socket manager linked to a channel
+func (socketManager *SocketManager) AddChannelSocket(channelId string, conn *net.TCPConn) {
+	socketManager.socketMutex.Lock()
+	defer socketManager.socketMutex.Unlock()
+
+	if socketManager.Sockets[channelId] == nil {
+		socketManager.Sockets[channelId] = make([]*net.TCPConn, 0)
+	}
+	socketManager.Sockets[channelId] = append(socketManager.Sockets[channelId], conn)
+}
+
 // ============================================
 // Event Handlers
 // ============================================
 
 // handleSocketConnect sent by server to finish the establishment of a socket channel
 func (socketManager *SocketManager) handleSocketConnect(_ *proxy.ProxyClient, packet proxy.Packet) {
+	logging.Get().Debugw("Received socket connect packet from the server", "packet", packet)
 	var createPacket proxcom.CreateSocketChannelPacket
 
 	err := packet.DecodeJsonData(&createPacket)
@@ -114,7 +179,13 @@ func (socketManager *SocketManager) handleSocketConnect(_ *proxy.ProxyClient, pa
 		return
 	}
 
-	socketManager.socketChannelCreated <- createPacket
+	if createPacket.Source.Id != socketManager.ClientManager.Client.Id {
+		// we are not the source. Establish outgoing connection
+		socketManager.ConnectOutbound(createPacket)
+	} else {
+		logging.Get().Debugw("Server reports socket channel created!", "packet", packet)
+		socketManager.socketChannelCreated <- createPacket
+	}
 }
 
 // ============================================
@@ -137,7 +208,9 @@ func (socketManager *SocketManager) listenLoop(listener *net.TCPListener, rule *
 				continue
 			}
 
-			logging.Get().Infow("Established socket channel", "channelId", channelId)
+			socketManager.AddChannelSocket(channelId, conn)
+
+			logging.Get().Debugw("Established socket channel to proxy server", "channelId", channelId)
 			go socketManager.packetPump(conn, channelId)
 		}
 	}
@@ -147,23 +220,19 @@ func (socketManager *SocketManager) listenLoop(listener *net.TCPListener, rule *
 // @param socket the socket to read packets from
 // @param socketChannelId the id of the socket channel to forward packets to
 func (socketManager *SocketManager) packetPump(socket *net.TCPConn, socketChannelId string) {
-	// buffer := make([]byte, PACKET_READ_SIZE)
-	// for {
-	// 	// read the packet
-	// 	bytesRead, err := socket.Read(buffer)
-	// 	if err == nil {
-	// 		logging.Get().Warn("Error reading from socket. Closing connection")
-	// 		socket.Close()
-	// 		break
-	// 	}
+	buffer := make([]byte, PACKET_READ_SIZE)
+	for {
+		// read the packet
+		bytesRead, err := socket.Read(buffer)
+		if err != nil {
+			logging.Get().Warn("Error reading from socket. Closing connection", "error", err)
+			socket.Close()
+			break
+		}
 
-	// 	// proxy the packet.
-	// 	packet, err := proxy.NewPacketFromBytes(buffer[:bytesRead])
-	// 	if err != nil {
-	// 		logging.Get().Warn("Error creating packet from bytes. Closing connection")
-	// 		break
-	// 	}
-
-	// 	socketManager.ClientManager.Client.Write()
-	// }
+		// proxy the packet.
+		packet := proxy.NewPacketOfBytes(buffer[:bytesRead], proxy.Data)
+		packet.Chan = proxy.SocketChannel{Id: socketChannelId}
+		socketManager.ClientManager.Client.Write(*packet)
+	}
 }

@@ -103,7 +103,7 @@ func (client *ProxyClient) messagePump() {
 		}
 
 		if msgType == websocket.BinaryMessage {
-			packet, err := NewPacketFromBytes(message)
+			packet, err := DecodePacketFromBytes(message)
 			if err != nil {
 				logging.Get().Warn("Failed to decode incoming packet from remote websocket",
 					"error", err,

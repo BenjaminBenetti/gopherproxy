@@ -6,17 +6,21 @@ import (
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
+	"github.com/CanadianCommander/gopherproxy/internal/proxy"
 	proxylib "github.com/CanadianCommander/gopherproxy/internal/proxy"
 	"github.com/google/uuid"
 )
 
 type manager struct {
-	clients      map[string][]*Client
-	clientsMutex sync.Mutex
+	clients        map[string][]*Client
+	clientsMutex   sync.Mutex
+	socketChannels map[string][]*SocketChannel
+	socketMutex    sync.Mutex
 }
 
 var Manager = manager{
-	clients: make(map[string][]*Client),
+	clients:        make(map[string][]*Client),
+	socketChannels: make(map[string][]*SocketChannel),
 }
 
 // ============================================
@@ -69,12 +73,93 @@ func (manager *manager) RemoveEndpoint(channel string, id uuid.UUID) error {
 	return nil
 }
 
+// EstablishNewChannel establishes a new channel between two clients
+// @param client: the client that is establishing the channel
+// @param chanCreatePacket: the packet containing the channel information
+func (manager *manager) EstablishNewChannel(client *Client, chanCreatePacket *proxcom.CreateSocketChannelPacket) {
+	manager.socketMutex.Lock()
+	defer manager.socketMutex.Unlock()
+	logging.Get().Infow("Establishing new channel", "client", client.Id, "packet", chanCreatePacket)
+
+	// assign the channel id and repack
+	chanCreatePacket.Id = uuid.NewString()
+	newPacket, err := proxy.NewPacketFromStruct(&chanCreatePacket, proxy.SocketConnect)
+	if err != nil {
+		logging.Get().Errorw("Failed to repack socket connect packet", "error", err)
+		return
+	}
+
+	// find the sink client
+	var sinkClient *Client = nil
+	for _, chanClient := range manager.clients[client.ProxyClient.Settings.Channel] {
+		if chanClient.MemberInfo.Id == chanCreatePacket.Sink.Id {
+			sinkClient = chanClient
+			break
+		}
+	}
+
+	// find the source client
+	var sourceClient *Client = nil
+	for _, chanClient := range manager.clients[client.ProxyClient.Settings.Channel] {
+		if chanClient.MemberInfo.Id == chanCreatePacket.Source.Id {
+			sourceClient = chanClient
+			break
+		}
+	}
+
+	// save the new channel
+	if manager.socketChannels[client.ProxyClient.Settings.Channel] == nil {
+		manager.socketChannels[client.ProxyClient.Settings.Channel] = make([]*SocketChannel, 0)
+	}
+	manager.socketChannels[client.ProxyClient.Settings.Channel] = append(manager.socketChannels[client.ProxyClient.Settings.Channel], &SocketChannel{
+		Id:          chanCreatePacket.Id,
+		Source:      sourceClient,
+		Sink:        sinkClient,
+		Initialized: false,
+	})
+
+	// send the new channel to the sink
+	sinkClient.ProxyClient.Write(*newPacket)
+}
+
+// FinalizeChannel finalizes the channel creation process
+// @param client: the client that is finalizing the channel
+// @param channel: the channel that is being finalized
+// @param chanCreatePacket: the packet that was used to create the channel
+func (manager *manager) FinalizeChannel(client *Client, channel *SocketChannel, chanCreatePacket *proxcom.CreateSocketChannelPacket) {
+	logging.Get().Infow("Finalizing Channel! sink reports channel creation success", "client", client.Id, "channel", channel.Id)
+	channel.Initialized = true
+
+	// send the channel creation success to the source
+	sourcePacket, err := proxy.NewPacketFromStruct(&chanCreatePacket, proxy.SocketConnect)
+	if err != nil {
+		logging.Get().Errorw("Failed to repack socket connect packet", "error", err)
+		return
+	}
+	channel.Source.ProxyClient.Write(*sourcePacket)
+}
+
 // ============================================
 // Event Handlers
 // ============================================
 
 // handleData handles data packets received from clients
 func (manager *manager) HandleData(client *Client, packet *proxylib.Packet) {
+	manager.clientsMutex.Lock()
+	defer manager.clientsMutex.Unlock()
+
+	for _, channel := range manager.socketChannels[client.ProxyClient.Settings.Channel] {
+		if channel.Id == packet.Chan.Id && channel.Initialized {
+			if client.Id == channel.Source.MemberInfo.Id {
+				channel.Sink.ProxyClient.Write(*packet)
+			} else {
+				channel.Source.ProxyClient.Write(*packet)
+			}
+			return
+		}
+	}
+
+	logging.Get().Warnw("Server received data packet for unknown channel", "client", client.Id, "packet", packet)
 }
 
 // handleError handles error packets received from clients
@@ -113,6 +198,32 @@ func (manager *manager) HandleMemberInfo(client *Client, packet *proxylib.Packet
 
 // handleSocketConnect handles socket connect packets received from clients
 func (manager *manager) HandleSocketConnect(client *Client, packet *proxylib.Packet) {
+	manager.socketMutex.Lock()
+	logging.Get().Infow("Received socket connect packet", "client", client.Id, "packet", packet)
+
+	// decode the packet
+	chanCreatePacket := proxcom.CreateSocketChannelPacket{}
+	err := packet.DecodeJsonData(&chanCreatePacket)
+	if err != nil {
+		logging.Get().Errorw("Failed to decode socket connect packet", "error", err)
+		manager.socketMutex.Unlock()
+		return
+	}
+
+	// check if this packet is for an existing channel
+	if manager.socketChannels[client.ProxyClient.Settings.Channel] != nil {
+		for _, channel := range manager.socketChannels[client.ProxyClient.Settings.Channel] {
+			if channel.Id == chanCreatePacket.Id && !channel.Initialized {
+				manager.socketMutex.Unlock()
+				manager.FinalizeChannel(client, channel, &chanCreatePacket)
+				return
+			}
+		}
+	}
+
+	// else create a new channel
+	manager.socketMutex.Unlock()
+	manager.EstablishNewChannel(client, &chanCreatePacket)
 }
 
 // handleSocketDisconnect handles socket disconnect packets received from clients

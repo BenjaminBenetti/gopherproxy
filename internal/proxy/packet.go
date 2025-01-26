@@ -34,17 +34,13 @@ type Packet struct {
 // Constructors
 // ============================================
 
-// FromBytes creates a new packet from a byte array
-func NewPacketFromBytes(data []byte) (*Packet, error) {
-
-	var packet = Packet{
-		Type: Data,
+// NewPacketOfBytes creates a new packet containing binary data
+func NewPacketOfBytes(data []byte, typ PacketType) *Packet {
+	return &Packet{
+		Type: typ,
 		Chan: SocketChannel{},
-		Data: nil,
+		Data: data,
 	}
-
-	var err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&packet)
-	return &packet, err
 }
 
 // NewPacketFromStruct creates a new packet from a struct with the given packet type
@@ -59,6 +55,19 @@ func NewPacketFromStruct(obj any, typ PacketType) (*Packet, error) {
 		Chan: SocketChannel{},
 		Data: bytes,
 	}, err
+}
+
+// DecodePacketFromBytes creates a new packet from a byte array
+func DecodePacketFromBytes(data []byte) (*Packet, error) {
+
+	var packet = Packet{
+		Type: Data,
+		Chan: SocketChannel{},
+		Data: nil,
+	}
+
+	var err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&packet)
+	return &packet, err
 }
 
 // ============================================

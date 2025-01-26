@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/forwarddisplay"
 	"github.com/CanadianCommander/gopherproxy/cmd/gopherproxyclient/proxy"
@@ -41,7 +42,14 @@ func main() {
 		clientManager.ListenOnAllForwardingRules()
 		display := forwarddisplay.NewForwardUi(clientManager)
 		display.Build()
-		display.StartDrawing()
+		if !cliArgs.Debug {
+			// don't draw display in debug mode so you can see log output
+			display.StartDrawing()
+		} else {
+			<-make(chan os.Signal, 1)
+			logging.Get().Info("User requested exit")
+			return
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", cliArgs.Command)
 	}
