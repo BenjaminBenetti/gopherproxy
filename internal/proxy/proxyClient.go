@@ -59,6 +59,10 @@ func newProxyClient(wsCon *websocket.Conn, settings ProxyClientSettings) *ProxyC
 // ============================================
 
 func (client *ProxyClient) Write(packet Packet) {
+	if client.Closed {
+		return
+	}
+
 	client.InputChannel <- packet
 }
 
@@ -72,6 +76,10 @@ func (client *ProxyClient) Read() (Packet, bool) {
 }
 
 func (client *ProxyClient) Close() error {
+	if client.Closed {
+		return nil
+	}
+
 	client.Closed = true
 	close(client.InputChannel)
 	close(client.OutputChannel)
@@ -99,6 +107,7 @@ func (client *ProxyClient) messagePump() {
 		if err != nil {
 			logging.Get().Warn("Failed to read from websocket, likely close. ",
 				"error", err)
+			client.Close()
 			break
 		}
 

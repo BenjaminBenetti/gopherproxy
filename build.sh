@@ -12,3 +12,7 @@ go build -a -v -o ./bin/gopherproxyserver-${TAG}.x86 ./cmd/gopherproxyserver
 # build arm
 GOARCH=arm64 go build -a -v -o ./bin/gopherproxy-${TAG}.arm ./cmd/gopherproxyclient
 GOARCH=arm64 go build -a -v -o ./bin/gopherproxyserver-${TAG}.arm ./cmd/gopherproxyserver
+
+# build windows 
+GOOS=windows go build -a -v -o ./bin/gopherproxy-${TAG}.x86.exe ./cmd/gopherproxyclient
+GOOS=windows go build -a -v -o ./bin/gopherproxyserver-${TAG}.x86.exe ./cmd/gopherproxyserver
