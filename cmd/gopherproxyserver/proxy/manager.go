@@ -228,6 +228,37 @@ func (manager *manager) HandleSocketConnect(client *Client, packet *proxylib.Pac
 
 // handleSocketDisconnect handles socket disconnect packets received from clients
 func (manager *manager) HandleSocketDisconnect(client *Client, packet *proxylib.Packet) {
+	manager.socketMutex.Lock()
+	defer manager.socketMutex.Unlock()
+
+	// decode the packet
+	disconnectPacket := proxcom.DisconnectSocketChannelPacket{}
+	err := packet.DecodeJsonData(&disconnectPacket)
+	if err != nil {
+		logging.Get().Errorw("Failed to decode socket disconnect packet", "error", err)
+		return
+	}
+
+	// Cleanup socket channel
+	if manager.socketChannels[client.ProxyClient.Settings.Channel] != nil {
+		for idx, channel := range manager.socketChannels[client.ProxyClient.Settings.Channel] {
+			if channel.Id == disconnectPacket.Id {
+				logging.Get().Infow("Closing socket channel", "channel", channel.Id, "client", client.Id)
+
+				// notify the other client that the channel is closing
+				if client.Id == channel.Source.MemberInfo.Id {
+					channel.Sink.ProxyClient.Write(*packet)
+				} else {
+					channel.Source.ProxyClient.Write(*packet)
+				}
+
+				// remove the channel
+				manager.socketChannels[client.ProxyClient.Settings.Channel] = append(manager.socketChannels[client.ProxyClient.Settings.Channel][:idx], manager.socketChannels[client.ProxyClient.Settings.Channel][idx+1:]...)
+				return
+			}
+		}
+	}
+
 }
 
 // ============================================

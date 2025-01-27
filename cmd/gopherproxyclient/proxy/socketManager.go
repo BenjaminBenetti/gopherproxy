@@ -96,6 +96,7 @@ func (socketManager *SocketManager) SendDataToSocket(packet *proxy.Packet) error
 		_, err := socket.Write(packet.Data)
 		if err != nil {
 			socket.Close()
+			socketManager.DisconnectSocketChannel(packet.Chan.Id)
 			socketManager.Sockets[packet.Chan.Id] = append(socketManager.Sockets[packet.Chan.Id][:idx], socketManager.Sockets[packet.Chan.Id][idx+1:]...)
 		}
 	}
@@ -174,6 +175,45 @@ func (socketManager *SocketManager) EstablishSocketChannel(rule *proxcom.Forward
 	}
 
 	return "", errors.New("socket channel creation failed")
+}
+
+// DisconnectSocketChannel disconnects a socket channel internally and sends a disconnect packet to the server
+// @param channelId the id of the channel to disconnect
+// @return an error if one occurred
+func (socketManager *SocketManager) DisconnectSocketChannel(channelId string) error {
+	logging.Get().Debugw("Initiating socket channel disconnect", "channelId", channelId)
+
+	packet, err := proxcom.NewDisconnectSocketChannelPacket(channelId)
+	if err != nil {
+		logging.Get().Errorw("Error creating disconnect socket channel packet", "error", err)
+		return err
+	}
+
+	socketManager.ClientManager.Client.Write(*packet)
+	socketManager.DisconnectSocketChannelInternal(channelId)
+	return nil
+}
+
+// DisconnectSocketChannelInternal disconnects a socket channel internally
+// @param channelId the id of the channel to disconnect
+// @return an error if one occurred
+func (socketManager *SocketManager) DisconnectSocketChannelInternal(channelId string) error {
+	logging.Get().Debugw("Disconnecting socket channel internally", "channelId", channelId)
+	socketManager.socketMutex.Lock()
+	defer socketManager.socketMutex.Unlock()
+
+	if socketManager.Sockets[channelId] != nil {
+		for _, socket := range socketManager.Sockets[channelId] {
+			err := socket.Close()
+			if err != nil {
+				logging.Get().Errorw("Error closing socket", "error", err)
+				return err
+			}
+		}
+		delete(socketManager.Sockets, channelId)
+	}
+
+	return nil
 }
 
 // AddChannelSocket adds a socket to the socket manager linked to a channel
@@ -268,6 +308,7 @@ func (socketManager *SocketManager) packetPump(socket *net.TCPConn, socketChanne
 		if err != nil {
 			// debug because this is a normal operation
 			logging.Get().Debugw("Error reading from socket. Closing connection", "error", err)
+			socketManager.DisconnectSocketChannel(socketChannelId)
 			socket.Close()
 			break
 		}

@@ -144,8 +144,18 @@ func (manager *ClientManager) handleCriticalError(client *proxy.ProxyClient, pac
 }
 
 func (manager *ClientManager) handleSocketDisconnect(client *proxy.ProxyClient, packet proxy.Packet) {
-	logging.Get().Infow("Received socket disconnect packet",
-		"endpoint", packet.Chan)
+	// decode packet
+	disconnectPacket := proxcom.DisconnectSocketChannelPacket{}
+	err := packet.DecodeJsonData(&disconnectPacket)
+	if err != nil {
+		logging.Get().Errorw("Failed to decode disconnect packet. Socket leaked!", "error", err)
+		return
+	}
+
+	logging.Get().Debugw("Received socket disconnect packet", "channelId", disconnectPacket.Id)
+
+	// disconnect the socket
+	manager.SocketManager.DisconnectSocketChannelInternal(disconnectPacket.Id)
 }
 
 // ============================================
