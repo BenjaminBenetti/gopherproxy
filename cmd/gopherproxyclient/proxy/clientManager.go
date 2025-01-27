@@ -17,6 +17,11 @@ type ClientManager struct {
 	SocketManager   *SocketManager
 	Initialized     bool
 	ForwardingRules []*proxcom.ForwardingRule
+
+	// NotificationString is displayed to the user
+	// at the bottom of the panel. put error messages here.
+	// This is important to use, as normal logging will corrupt the display.
+	NotificationString string
 }
 
 // ============================================
@@ -125,15 +130,17 @@ func (manager *ClientManager) handleData(client *proxy.ProxyClient, packet proxy
 	err := manager.SocketManager.SendDataToSocket(&packet)
 	if err != nil {
 		if err.Error() != "EOF" {
-			logging.Get().Errorw("Failed to send data to socket", "error", err)
+			logging.Get().Debugw("Failed to send data to socket", "error", err)
+			manager.NotificationString = "Failed to send data to socket"
 		}
 	}
 }
 
 func (manager *ClientManager) handleError(client *proxy.ProxyClient, packet proxy.Packet) {
-	logging.Get().Errorw("Received error packet",
+	logging.Get().Debugw("Received error packet",
 		"error", string(packet.Data))
 
+	manager.NotificationString = string(packet.Data)
 }
 
 func (manager *ClientManager) handleCriticalError(client *proxy.ProxyClient, packet proxy.Packet) {
@@ -148,7 +155,8 @@ func (manager *ClientManager) handleSocketDisconnect(client *proxy.ProxyClient, 
 	disconnectPacket := proxcom.DisconnectSocketChannelPacket{}
 	err := packet.DecodeJsonData(&disconnectPacket)
 	if err != nil {
-		logging.Get().Errorw("Failed to decode disconnect packet. Socket leaked!", "error", err)
+		logging.Get().Debugw("Failed to decode disconnect packet. Socket leaked!", "error", err)
+		manager.NotificationString = "Failed to decode disconnect packet. Socket leaked!"
 		return
 	}
 

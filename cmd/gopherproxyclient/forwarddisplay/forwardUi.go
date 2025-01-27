@@ -20,6 +20,9 @@ type ForwardUi struct {
 	forwardsTable *tview.Table
 	clientList    *tview.List
 	metrics       *tview.TextView
+	alerts        *tview.TextView
+
+	alertDisplayedAt time.Time
 }
 
 // ============================================
@@ -39,7 +42,7 @@ func NewForwardUi(clientManager *proxy.ClientManager) *ForwardUi {
 // ============================================
 
 func (ui *ForwardUi) Build() {
-	ui.gridLayout = tview.NewGrid().SetRows(0, 1).SetColumns(-2, 0)
+	ui.gridLayout = tview.NewGrid().SetRows(0, 1).SetColumns(-2, 0, 0, 0, 0)
 
 	// Forwards Table
 	ui.forwardsTable = tview.NewTable()
@@ -55,10 +58,16 @@ func (ui *ForwardUi) Build() {
 	ui.metrics = tview.NewTextView()
 	ui.metrics.SetTitle("Metrics")
 
+	// Alerts
+	ui.alerts = tview.NewTextView()
+	ui.alerts.SetTitle("Alerts")
+	ui.alerts.SetTextColor(tview.Styles.SecondaryTextColor)
+
 	// layout
-	ui.gridLayout.AddItem(ui.forwardsTable, 0, 0, 1, 1, 0, 0, false)
-	ui.gridLayout.AddItem(ui.clientList, 0, 1, 1, 1, 0, 0, false)
-	ui.gridLayout.AddItem(ui.metrics, 1, 0, 1, 2, 0, 0, false)
+	ui.gridLayout.AddItem(ui.forwardsTable, 0, 0, 1, 3, 0, 0, false)
+	ui.gridLayout.AddItem(ui.clientList, 0, 3, 1, 2, 0, 0, false)
+	ui.gridLayout.AddItem(ui.metrics, 1, 0, 1, 1, 0, 0, false)
+	ui.gridLayout.AddItem(ui.alerts, 1, 1, 1, 4, 0, 0, false)
 }
 
 func (ui *ForwardUi) StartDrawing() {
@@ -84,6 +93,7 @@ func (ui *ForwardUi) drawLoop() {
 		ui.updateFowardRulesTable()
 		ui.updateClientsList()
 		ui.updateMetrics()
+		ui.updateAlerts()
 
 		ui.uiApp.Draw()
 		time.Sleep(ui.RefreshInterval)
@@ -172,6 +182,23 @@ func (ui *ForwardUi) updateClientsList() {
 		}
 	}
 
+}
+
+func (ui *ForwardUi) updateAlerts() {
+	builder := strings.Builder{}
+
+	if ui.clientManager.NotificationString != "" {
+		fmt.Fprintf(&builder, "❗ %s", ui.clientManager.NotificationString)
+
+		if ui.alerts.GetText(false) == "" {
+			ui.alertDisplayedAt = time.Now().UTC()
+		} else if time.Since(ui.alertDisplayedAt) > 15*time.Second {
+			// clear the alert after 15 seconds
+			ui.clientManager.NotificationString = ""
+		}
+	}
+
+	ui.alerts.SetText(builder.String())
 }
 
 func (ui *ForwardUi) updateMetrics() {

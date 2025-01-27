@@ -39,7 +39,8 @@ func (manager *stateManager) SendOurChannelMemberInfoToServer() error {
 
 	packet, err := proxy.NewPacketFromStruct(channelMember, proxy.MemberInfo)
 	if err != nil {
-		logging.Get().Errorw("Failed to create member info packet", "error", err)
+		logging.Get().Debugw("Failed to create member info packet", "error", err)
+		manager.ClientManager.NotificationString = "Failed to create member info packet"
 		return err
 	}
 
@@ -56,7 +57,8 @@ func (manager *stateManager) handleChannelState(client *proxy.ProxyClient, packe
 
 	err := packet.DecodeJsonData(&channelState)
 	if err != nil {
-		logging.Get().Errorw("Channel state update failed. Error decoding state packet", "error", err)
+		logging.Get().Debugw("Channel state update failed. Error decoding state packet", "error", err)
+		manager.ClientManager.NotificationString = "Channel state update failed. Error decoding state packet"
 	}
 
 	client.Id = channelState.YourId

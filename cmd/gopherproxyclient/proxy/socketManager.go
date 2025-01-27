@@ -113,7 +113,8 @@ func (socketManager *SocketManager) ConnectOutbound(socketChannel proxcom.Create
 	// connect to the server
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", socketChannel.ForwardingRule.RemoteHost, socketChannel.ForwardingRule.RemotePort))
 	if err != nil {
-		logging.Get().Errorw("Error connecting to outbound server", "error", err)
+		logging.Get().Debugw("Error connecting to outbound server", "error", err)
+		socketManager.ClientManager.NotificationString = "Error connecting to outbound server"
 		return
 	}
 
@@ -123,7 +124,8 @@ func (socketManager *SocketManager) ConnectOutbound(socketChannel proxcom.Create
 	// notify proxy server
 	packet, err := proxy.NewPacketFromStruct(&socketChannel, proxy.SocketConnect)
 	if err != nil {
-		logging.Get().Errorw("Error notifying proxy server of successful connect ", "error", err)
+		logging.Get().Debugw("Error notifying proxy server of successful connect ", "error", err)
+		socketManager.ClientManager.NotificationString = "Error notifying proxy server of successful connect"
 		conn.Close()
 		return
 	}
@@ -185,7 +187,8 @@ func (socketManager *SocketManager) DisconnectSocketChannel(channelId string) er
 
 	packet, err := proxcom.NewDisconnectSocketChannelPacket(channelId)
 	if err != nil {
-		logging.Get().Errorw("Error creating disconnect socket channel packet", "error", err)
+		logging.Get().Debugw("Error creating disconnect socket channel packet", "error", err)
+		socketManager.ClientManager.NotificationString = "Error creating disconnect socket channel packet"
 		return err
 	}
 
@@ -206,7 +209,8 @@ func (socketManager *SocketManager) DisconnectSocketChannelInternal(channelId st
 		for _, socket := range socketManager.Sockets[channelId] {
 			err := socket.Close()
 			if err != nil {
-				logging.Get().Errorw("Error closing socket", "error", err)
+				logging.Get().Debugw("Error closing socket", "error", err)
+				socketManager.ClientManager.NotificationString = "Error closing socket"
 				return err
 			}
 		}
@@ -256,7 +260,8 @@ func (socketManager *SocketManager) handleSocketConnect(_ *proxy.ProxyClient, pa
 
 	err := packet.DecodeJsonData(&createPacket)
 	if err != nil {
-		logging.Get().Errorw("Error decoding socket channel create packet", "error", err)
+		logging.Get().Debugw("Error decoding socket channel create packet", "error", err)
+		socketManager.ClientManager.NotificationString = "Error decoding socket channel create packet"
 		return
 	}
 
@@ -284,7 +289,8 @@ func (socketManager *SocketManager) listenLoop(listener *net.TCPListener, rule *
 			// establish the socket channel on server
 			channelId, err := socketManager.EstablishSocketChannel(rule)
 			if err != nil {
-				logging.Get().Errorw("Error establishing socket channel", "error", err)
+				logging.Get().Debugw("Error establishing socket channel", "error", err)
+				socketManager.ClientManager.NotificationString = "Error establishing socket channel"
 				conn.Close()
 				continue
 			}
