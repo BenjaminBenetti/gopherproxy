@@ -9,4 +9,5 @@ FROM alpine:3.21.2 AS run
 
 COPY --from=build /src/bin/gopherproxyserver ./gopherproxyserver
 
+ENV GIN_MODE=release
 ENTRYPOINT [ "./gopherproxyserver" ]
