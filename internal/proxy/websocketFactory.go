@@ -18,6 +18,7 @@ func UpgradeConnection(context *gin.Context, settings ProxyClientSettings) (*Pro
 	}
 
 	var wsCon, err = upgrader.Upgrade(context.Writer, context.Request, nil)
+	wsCon.SetReadLimit(wsMaxPacketSize)
 	if err != nil {
 		logging.Get().Errorw("Failed to upgrade connection to websocket",
 			"error", err)
