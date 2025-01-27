@@ -39,5 +39,5 @@ jobs:
           file: ./cmd/gopherproxyserver/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/BenjaminBenetti/gopherproxyserver:${{github.ref_name}}
+          tags: ghcr.io/benjaminbenetti/gopherproxyserver:${{github.ref_name}}
           labels: ${{ steps.meta.outputs.labels }}
