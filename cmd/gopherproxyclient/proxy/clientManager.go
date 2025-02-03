@@ -1,10 +1,12 @@
 package proxy
 
 import (
+	"net/url"
 	"os"
 	"os/signal"
 	"slices"
 	"syscall"
+	"time"
 
 	"github.com/CanadianCommander/gopherproxy/internal/logging"
 	"github.com/CanadianCommander/gopherproxy/internal/proxcom"
@@ -17,6 +19,7 @@ type ClientManager struct {
 	SocketManager   *SocketManager
 	Initialized     bool
 	ForwardingRules []*proxcom.ForwardingRule
+	ProxyUrl        url.URL
 
 	// NotificationString is displayed to the user
 	// at the bottom of the panel. put error messages here.
@@ -29,11 +32,12 @@ type ClientManager struct {
 // ============================================
 
 // NewClientManager creates a new client manager
-func NewClientManager(client *proxy.ProxyClient, forwardingRules []*proxcom.ForwardingRule, debugPackets bool) *ClientManager {
+func NewClientManager(client *proxy.ProxyClient, forwardingRules []*proxcom.ForwardingRule, proxyUrl url.URL, debugPackets bool) *ClientManager {
 	clientManager := ClientManager{
 		Client:          client,
 		Initialized:     false,
 		ForwardingRules: forwardingRules,
+		ProxyUrl:        proxyUrl,
 	}
 	clientManager.StateManager = NewStateManager(&clientManager)
 	clientManager.SocketManager = NewSocketManager(&clientManager, debugPackets)
@@ -66,6 +70,7 @@ func (manager *ClientManager) WaitForInitialization() {
 		manager.Initialized = true
 
 		// send the initial status update
+		manager.ListenOnAllForwardingRules()
 		manager.StateManager.SendOurChannelMemberInfoToServer()
 		manager.SocketManager.Start()
 	}
@@ -120,6 +125,45 @@ func (manager *ClientManager) AllForwardingRulesTargetingClient(clientName strin
 // AllRulesTargetingUs returns all forwarding rules that target this client
 func (manager *ClientManager) AllRulesTargetingUs() []*proxcom.ForwardingRule {
 	return manager.AllForwardingRulesTargetingClient(manager.Client.Settings.Name)
+}
+
+// ReconnectToProxyServer attempts to reconnect this client to the proxy server
+// IT WILL TRY FOREVER, until it succeeds or the user kills the program
+func (manager *ClientManager) ReconnectToProxyServer() {
+	// de-initialize
+	manager.Initialized = false
+	manager.SocketManager.Close()
+	manager.StateManager = NewStateManager(manager)
+	manager.SocketManager = NewSocketManager(manager, false)
+
+	clientSettings := manager.Client.Settings
+	for {
+		logging.Get().Debug("Attempting to reconnect to proxy server...")
+		manager.NotificationString = "📡 Connection Lost, Attempting to Reconnect... \\"
+		<-time.After(500 * time.Millisecond)
+
+		// close our current connection
+		if manager.Client != nil {
+			manager.Client.Close()
+		}
+
+		// Create a new GopherProxyClient
+		var err error
+		manager.Client, err = proxy.NewOutgoingSocket(manager.ProxyUrl, clientSettings)
+		if err != nil {
+			manager.NotificationString = "📡 Connection Lost, Attempting to Reconnect... /"
+		} else {
+			logging.Get().Debug("Reconnected to proxy server")
+			manager.NotificationString = "📡 Reconnected to Proxy Server! 🚀"
+			// start new message processing loop
+			go messageProcessingLoop(manager, manager.Client)
+			// wait for server to re-initialize us
+			manager.WaitForInitialization()
+			return
+		}
+
+		<-time.After(500 * time.Millisecond)
+	}
 }
 
 // ============================================
@@ -184,7 +228,9 @@ func messageProcessingLoop(manager *ClientManager, client *proxy.ProxyClient) {
 	for {
 		packet, ok := client.Read()
 		if !ok {
-			logging.Get().Info("Proxy connection closed")
+			// we've lost connection. Try to reconnect
+			logging.Get().Debug("Lost connection to proxy server. Attempting to reconnect")
+			manager.ReconnectToProxyServer()
 			return
 		} else {
 			switch packet.Type {

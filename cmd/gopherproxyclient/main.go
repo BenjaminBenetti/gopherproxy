@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	clientManager := proxy.NewClientManager(client, cliArgs.ForwardingRules, cliArgs.DebugPrintPackets)
+	clientManager := proxy.NewClientManager(client, cliArgs.ForwardingRules, cliArgs.ProxyUrl, cliArgs.DebugPrintPackets)
 	clientManager.Start()
 	clientManager.WaitForInitialization()
 
@@ -39,7 +39,6 @@ func main() {
 	case "list":
 		listChannelMembers(cliArgs.Channel, clientManager)
 	case "start":
-		clientManager.ListenOnAllForwardingRules()
 		display := forwarddisplay.NewForwardUi(clientManager)
 		display.Build()
 		if !cliArgs.Debug {

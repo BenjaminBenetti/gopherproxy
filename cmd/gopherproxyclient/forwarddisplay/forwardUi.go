@@ -163,7 +163,7 @@ func (ui *ForwardUi) updateClientsList() {
 	for idx, client := range ui.clientManager.StateManager.ChannelMembers {
 
 		secondaryText := "Remote"
-		if client.Id == ui.clientManager.Client.Id {
+		if ui.clientManager.Client != nil && client.Id == ui.clientManager.Client.Id {
 			secondaryText = "You"
 		}
 

@@ -17,6 +17,7 @@ type SocketManager struct {
 	Listeners     []*net.TCPListener
 	// map, channel id -> socket
 	Sockets map[string][]*net.TCPConn
+	Closed  bool
 
 	socketMutex          sync.Mutex
 	listenerMutex        sync.Mutex
@@ -41,9 +42,11 @@ const SOCKET_CHANNEL_CREATE_TIMEOUT = 5 * time.Second
 // NewSocketManager creates a new socket manager
 func NewSocketManager(clientManager *ClientManager, debugPackets bool) *SocketManager {
 	return &SocketManager{
-		ClientManager:        clientManager,
-		Listeners:            make([]*net.TCPListener, 0),
-		Sockets:              make(map[string][]*net.TCPConn),
+		ClientManager: clientManager,
+		Listeners:     make([]*net.TCPListener, 0),
+		Sockets:       make(map[string][]*net.TCPConn),
+		Closed:        false,
+
 		socketChannelCreated: make(chan proxcom.CreateSocketChannelPacket, 10),
 		debugPackets:         debugPackets,
 
@@ -139,6 +142,7 @@ func (socketManager *SocketManager) Close() {
 	socketManager.listenerMutex.Lock()
 	defer socketManager.listenerMutex.Unlock()
 
+	socketManager.Closed = true
 	for _, listener := range socketManager.Listeners {
 		listener.Close()
 	}
@@ -283,7 +287,12 @@ func (socketManager *SocketManager) listenLoop(listener *net.TCPListener, rule *
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
-			logging.Get().Warn("Error in TCP listener. Could not accept incomming connection. Trying to continue")
+			logging.Get().Warn("Error in TCP listener. Could not accept incoming connection")
+			if !socketManager.Closed {
+				logging.Get().Warn("Error in TCP listener. Trying to continue")
+			} else {
+				return // listener closed
+			}
 		} else {
 
 			// establish the socket channel on server
