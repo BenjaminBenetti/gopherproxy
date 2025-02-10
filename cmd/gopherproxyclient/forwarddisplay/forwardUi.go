@@ -70,7 +70,7 @@ func (ui *ForwardUi) Build() {
 	ui.gridLayout.AddItem(ui.alerts, 1, 1, 1, 4, 0, 0, false)
 }
 
-func (ui *ForwardUi) StartDrawing() {
+func (ui *ForwardUi) Start() {
 	ui.Running = true
 	ui.uiApp = tview.NewApplication()
 	go ui.drawLoop()

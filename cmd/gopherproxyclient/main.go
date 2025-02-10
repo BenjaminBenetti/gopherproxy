@@ -15,6 +15,8 @@ func main() {
 	cliArgs := ParseArgs()
 	if cliArgs.Debug {
 		logging.CreateLogger(zap.DebugLevel)
+	} else if cliArgs.LoggingBasedUi {
+		logging.CreateLogger(zap.InfoLevel)
 	} else {
 		logging.CreateLogger(zap.ErrorLevel)
 	}
@@ -39,12 +41,17 @@ func main() {
 	case "list":
 		listChannelMembers(cliArgs.Channel, clientManager)
 	case "start":
-		display := forwarddisplay.NewForwardUi(clientManager)
+		var display forwarddisplay.Display
+		if cliArgs.LoggingBasedUi {
+			display = forwarddisplay.NewForwardLoggingUi(clientManager)
+		} else {
+			display = forwarddisplay.NewForwardUi(clientManager)
+		}
 		display.Build()
 		if !cliArgs.Debug {
-			// don't draw display in debug mode so you can see log output
-			display.StartDrawing()
+			display.Start()
 		} else {
+			// don't draw display in debug mode so you can see log output
 			<-make(chan os.Signal, 1)
 			logging.Get().Info("User requested exit")
 			return

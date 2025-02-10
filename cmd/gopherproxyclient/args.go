@@ -16,6 +16,7 @@ type CliArgs struct {
 	ClientName        string
 	Debug             bool
 	DebugPrintPackets bool
+	LoggingBasedUi    bool
 	Command           string
 	ForwardingRules   []*proxcom.ForwardingRule
 }
@@ -34,6 +35,7 @@ func ParseArgs() CliArgs {
 	clientName := flag.String("name", "", "The name of the client connecting to the proxy. Use this to organize clients. Defaults to the hostname of the machine.")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	debugPrintPackets := flag.Bool("debug-packets", false, "Enable debug logging of packets")
+	loggingUi := flag.Bool("logging-ui", false, "Enable the logging based UI. This \"UI\" produces output easily parsable by other applications.")
 
 	flag.Parse()
 	if flag.NArg() == 0 {
@@ -73,6 +75,7 @@ func ParseArgs() CliArgs {
 		DebugPrintPackets: *debugPrintPackets,
 		Command:           command,
 		ForwardingRules:   forwardingRules,
+		LoggingBasedUi:    *loggingUi,
 	}
 
 	validateArgs(cliArgs)
